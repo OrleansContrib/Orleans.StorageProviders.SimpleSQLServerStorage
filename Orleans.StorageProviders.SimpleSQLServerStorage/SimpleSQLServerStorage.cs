@@ -130,11 +130,16 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                 GrainKeyId = primaryKey,
             };
             //var value = await db.GetObjectContext().SaveOrUpdate(kvb);
-            var entity = new KeyValueBinary() { GrainKeyId = primaryKey };
+            //var entity = new KeyValueBinary() { GrainKeyId = primaryKey };
             using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
             {
-                db.KeyValuesBinary.Attach(entity);
-                db.KeyValuesBinary.Add(entity);
+                db.KeyValuesBinary.Attach(kvb);
+                //db.KeyValuesBinary.Add(kvb);
+                db.Entry(kvb).State = (string.IsNullOrEmpty(kvb.GrainKeyId)) ?
+                                   EntityState.Added :
+                                   EntityState.Modified;
+
+
                 await db.SaveChangesAsync();
             }
         }
