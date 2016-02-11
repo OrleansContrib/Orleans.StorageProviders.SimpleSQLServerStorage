@@ -4,19 +4,23 @@ using Orleans.Runtime;
 using Orleans.Storage;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Data.Entity;
+using Orleans.Serialization;
+using System.Data.Entity.Core.Objects;
 
 namespace Orleans.StorageProviders.SimpleSQLServerStorage
 {
     public class SimpleSQLServerStorage : IStorageProvider
     {
-        private ConnectionMultiplexer connectionMultiplexer;
-        private IDatabase redisDatabase;
+        private SqlConnectionStringBuilder sqlconnBuilder;
 
-        private const string REDIS_CONNECTION_STRING = "RedisConnectionString";
-        private const string REDIS_DATABASE_NUMBER = "DatabaseNumber";
+        private const string CONNECTION_STRING = "ConnectionString";
+
+        string myConnectionString = @"metadata=.\Model1.csdl|.\Model1.ssdl|.\Model1.msl;provider=System.Data.SqlClient;provider connection string="";data source=.;initial catalog=test;integrated security=True;multipleactiveresultsets=True;App=EntityFramework""";
 
         private string serviceId;
         private Newtonsoft.Json.JsonSerializerSettings jsonSettings;
@@ -37,27 +41,16 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
             Name = name;
             serviceId = providerRuntime.ServiceId.ToString();
 
-            if (!config.Properties.ContainsKey(REDIS_CONNECTION_STRING) ||
-                string.IsNullOrWhiteSpace(config.Properties[REDIS_CONNECTION_STRING]))
+            if (!config.Properties.ContainsKey(CONNECTION_STRING) ||
+                string.IsNullOrWhiteSpace(config.Properties[CONNECTION_STRING]))
             {
-                throw new ArgumentException("RedisConnectionString is not set.");
+                throw new ArgumentException("Specify a value for", CONNECTION_STRING);
             }
-            var connectionString = config.Properties[REDIS_CONNECTION_STRING];
+            var connectionString = config.Properties[CONNECTION_STRING];
+            sqlconnBuilder = new SqlConnectionStringBuilder(connectionString);
 
-            connectionMultiplexer = await ConnectionMultiplexer.ConnectAsync(connectionString);
-
-            if (!config.Properties.ContainsKey(REDIS_DATABASE_NUMBER) ||
-                string.IsNullOrWhiteSpace(config.Properties[REDIS_DATABASE_NUMBER]))
-            {
-                //do not throw an ArgumentException but use the default database
-                redisDatabase = connectionMultiplexer.GetDatabase();
-            }
-            else
-            {
-                var databaseNumber = Convert.ToInt16(config.Properties[REDIS_DATABASE_NUMBER]);
-                redisDatabase = connectionMultiplexer.GetDatabase(databaseNumber);
-            }
-
+            //a validation of the connection would be wise to perform here
+            await new SqlConnection(sqlconnBuilder.ConnectionString).OpenAsync();
 
 
             jsonSettings = new Newtonsoft.Json.JsonSerializerSettings()
@@ -72,9 +65,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
             };
 
 
-
-
-            Log = providerRuntime.GetLogger("StorageProvider.RedisStorage." + serviceId);
+            Log = providerRuntime.GetLogger("StorageProvider.SimpleSQLServerStorage." + serviceId);
         }
 
         // Internal method to initialize for testing
@@ -87,7 +78,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
         /// <see cref="IStorageProvider#Close"/>
         public Task Close()
         {
-            connectionMultiplexer.Dispose();
+            //the using of the dbContext of the async methods finally should be disposing the connection
             return TaskDone.Done;
         }
 
@@ -99,27 +90,20 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 
             if (Log.IsVerbose3)
             {
-                Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.RedisStorageProvider_ReadingData, "Reading: GrainType={0} Pk={1} Grainid={2} from Database={3}", grainType, primaryKey, grainReference, redisDatabase.Database);
+                Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerProvide_ReadingData,
+                    "Reading: GrainType={0} Pk={1} Grainid={2} from DataSource={3}",
+                    grainType, primaryKey, grainReference, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
             }
 
-            RedisValue value = await redisDatabase.StringGetAsync(primaryKey);
             var data = new Dictionary<string, object>();
-            if (value.HasValue)
+            //    RedisValue value = await redisDatabase.StringGetAsync(primaryKey);
+            using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
             {
-                data = JsonConvert.DeserializeObject<Dictionary<string, object>>(value, jsonSettings);
+                var value = await db.KeyValuesBinary.Where(s => s.GrainKeyId.Equals(primaryKey)).Select(s => s.BinaryContent).SingleOrDefaultAsync();
+                if(value !=null)
+                    data = SerializationManager.DeserializeFromByteArray<Dictionary<string, object>>(value);
             }
-
-            //var entity = new GrainStateEntity { PartitionKey = pk, RowKey = grainType };
-
-            try
-            {
-                grainState.SetAll(data);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(0, "setall failed", ex);
-                throw;
-            }
+            grainState.SetAll(data);
 
             grainState.Etag = Guid.NewGuid().ToString();
         }
@@ -131,31 +115,78 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
             var primaryKey = grainReference.ToKeyString();
             if (Log.IsVerbose3)
             {
-                Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.RedisStorageProvider_WritingData, "Writing: GrainType={0} PrimaryKey={1} Grainid={2} ETag={3} to Database={4}", grainType, primaryKey, grainReference, grainState.Etag, redisDatabase.Database);
+                Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerProvide_WritingData,
+                    "Writing: GrainType={0} PrimaryKey={1} Grainid={2} ETag={3} to Database={4}",
+                    grainType, primaryKey, grainReference, grainState.Etag, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
             }
             var data = grainState.AsDictionary();
 
-            var json = JsonConvert.SerializeObject(data, jsonSettings);
-            await redisDatabase.StringSetAsync(primaryKey, json);
+            byte[] payload = SerializationManager.SerializeToByteArray(data);
+
+            //await redisDatabase.StringSetAsync(primaryKey, json);
+            var kvb = new KeyValueBinary()
+            {
+                BinaryContent = payload,
+                GrainKeyId = primaryKey,
+            };
+            //var value = await db.GetObjectContext().SaveOrUpdate(kvb);
+            var entity = new KeyValueBinary() { GrainKeyId = primaryKey };
+            using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
+            {
+                db.KeyValuesBinary.Attach(entity);
+                db.KeyValuesBinary.Add(entity);
+                await db.SaveChangesAsync();
+            }
         }
 
         /// <summary> Clear state data function for this storage provider. </summary>
         /// <remarks>
         /// </remarks>
         /// <see cref="IStorageProvider#ClearStateAsync"/>
-        public Task ClearStateAsync(string grainType, GrainReference grainReference, GrainState grainState)
+        public async Task ClearStateAsync(string grainType, GrainReference grainReference, GrainState grainState)
         {
             var primaryKey = grainReference.ToKeyString();
             if (Log.IsVerbose3)
             {
-                Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.RedisStorageProvider_ClearingData, "Clearing: GrainType={0} Pk={1} Grainid={2} ETag={3} DeleteStateOnClear={4} from Table={5}", grainType, primaryKey, grainReference, grainState.Etag, redisDatabase.Database);
+                Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerStorageProvider_ClearingData,
+                    "Clearing: GrainType={0} Pk={1} Grainid={2} ETag={3} DeleteStateOnClear={4} from Table={5}",
+                    grainType, primaryKey, grainReference, grainState.Etag, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
             }
             //remove from cache
-            redisDatabase.KeyDelete(primaryKey);
-            return TaskDone.Done;
+            //redisDatabase.KeyDelete(primaryKey);
+            var entity = new KeyValueBinary() { GrainKeyId = primaryKey };
+            using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
+            {
+                db.KeyValuesBinary.Attach(entity);
+                db.KeyValuesBinary.Remove(entity);
+                await db.SaveChangesAsync();
+            }
         }
-
-
     }
+
+    public static class Helper
+    {
+        public static void SaveOrUpdate<TEntity>    (this ObjectContext context, TEntity entity)    where TEntity : class
+        {
+            ObjectStateEntry stateEntry = null;
+            context.ObjectStateManager
+                .TryGetObjectStateEntry(entity, out stateEntry);
+
+            var objectSet = context.CreateObjectSet< TEntity>();
+            if (stateEntry == null || stateEntry.EntityKey.IsTemporary)
+            {
+                objectSet.AddObject(entity);
+            }
+
+            else if (stateEntry.State == EntityState.Detached)
+            {
+                objectSet.Attach(entity);
+                context.ObjectStateManager.ChangeObjectState(entity, EntityState.Modified);
+            }
+        }
+    }
+
+
+
 
 }

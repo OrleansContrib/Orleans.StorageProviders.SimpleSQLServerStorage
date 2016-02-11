@@ -7,8 +7,16 @@ using System.Threading.Tasks;
 
 namespace Orleans.StorageProviders.SimpleSQLServerStorage
 {
+    [DbConfigurationType(typeof(KeyValueDbConfiguration))]
     class KeyValueDbContext : DbContext
     {
-        public DbSet<KeyValueBinary> KeyValues { get; set; }
+        public KeyValueDbContext(string connString)
+        : base(connString)
+        { }
+
+
+        //public DbSet<StorageName> StorageName { get; set; }
+        public DbSet<KeyValueBinary> KeyValuesBinary { get; set; }
+        //public DbSet<KeyValueJson> KeyValuesJson { get; set; }
     }
 }

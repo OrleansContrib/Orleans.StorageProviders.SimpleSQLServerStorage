@@ -66,6 +66,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="KeyValueBinary.cs" />
+    <Compile Include="KeyValueDbConfiguration.cs" />
     <Compile Include="KeyValueDbContext.cs" />
     <Compile Include="KeyValueJson.cs" />
     <Compile Include="SimpleSQLServerProviderErrorCodes.cs" />
