@@ -1,0 +1,17 @@
+﻿<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <version>$version$</version>
+    <authors>$author$</authors>
+    <owners />
+    <id>$id$</id>
+    <title>Orleans.StorageProviders.SimpleSQLServerStorage</title>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A KV SQL Server implementation of the Orleans Storage Provider model</description>
+    <copyright>MIT</copyright>
+    <summary>A KV SQL Server implementation of the Orleans Storage Provider model.</summary>
+    <projectUrl>https://github.com/amccool/Orleans.StorageProvider.SimpleSQLServerStorage</projectUrl>
+    <tags>Orleans, sqlserver, storageprovider</tags>
+  </metadata>
+  <files />
+</package>

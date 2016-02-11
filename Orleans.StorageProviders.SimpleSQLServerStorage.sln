@@ -1,0 +1,47 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.24720.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orleans.StorageProviders.SimpleSQLServerStorage", "Orleans.StorageProviders.SimpleSQLServerStorage\Orleans.StorageProviders.SimpleSQLServerStorage.csproj", "{EC70A034-22ED-4CF8-AB4B-7F89E5395268}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TEsts", "TEsts", "{55B9368A-50BE-4318-B181-70FBD67A1D73}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleGrains", "Tests\SimpleGrains\SimpleGrains.csproj", "{563672AB-EA40-49D8-BEBC-E0152D98615E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleGrainInterfaces", "tests\SimpleGrainInterfaces\SimpleGrainInterfaces.csproj", "{3FF17408-E556-43F5-AF82-5881DC1551A0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleSQLServerStorage.Tests", "test\SimpleSQLServerStorage.Tests\SimpleSQLServerStorage.Tests.csproj", "{C096A161-4581-472D-A7F1-014EFB8A0C74}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EC70A034-22ED-4CF8-AB4B-7F89E5395268}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC70A034-22ED-4CF8-AB4B-7F89E5395268}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC70A034-22ED-4CF8-AB4B-7F89E5395268}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC70A034-22ED-4CF8-AB4B-7F89E5395268}.Release|Any CPU.Build.0 = Release|Any CPU
+		{563672AB-EA40-49D8-BEBC-E0152D98615E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{563672AB-EA40-49D8-BEBC-E0152D98615E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{563672AB-EA40-49D8-BEBC-E0152D98615E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{563672AB-EA40-49D8-BEBC-E0152D98615E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FF17408-E556-43F5-AF82-5881DC1551A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FF17408-E556-43F5-AF82-5881DC1551A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FF17408-E556-43F5-AF82-5881DC1551A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FF17408-E556-43F5-AF82-5881DC1551A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C096A161-4581-472D-A7F1-014EFB8A0C74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C096A161-4581-472D-A7F1-014EFB8A0C74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C096A161-4581-472D-A7F1-014EFB8A0C74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C096A161-4581-472D-A7F1-014EFB8A0C74}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{563672AB-EA40-49D8-BEBC-E0152D98615E} = {55B9368A-50BE-4318-B181-70FBD67A1D73}
+		{3FF17408-E556-43F5-AF82-5881DC1551A0} = {55B9368A-50BE-4318-B181-70FBD67A1D73}
+		{C096A161-4581-472D-A7F1-014EFB8A0C74} = {55B9368A-50BE-4318-B181-70FBD67A1D73}
+	EndGlobalSection
+EndGlobal
