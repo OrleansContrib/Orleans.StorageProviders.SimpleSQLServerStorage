@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{C096A161-4581-472D-A7F1-014EFB8A0C74}</ProjectGuid>
+    <ProjectGuid>{9266AAB3-B064-4A0D-B7C6-6101EB2226C8}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>SimpleSQLServerStorage.Tests</RootNamespace>
