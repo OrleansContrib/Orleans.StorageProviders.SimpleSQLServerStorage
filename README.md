@@ -12,7 +12,7 @@ Decorate your grain with the StorageProvider attribute e.g.
 [StorageProvider(ProviderName = "PubSubStore")]
 ```
 
-and in your OrleansConfiguration.xml configure the RedisStorage provider like this:
+in your OrleansConfiguration.xml configure the provider like this:
 
 ```xml
 <StorageProviders>
@@ -30,7 +30,7 @@ and in your OrleansConfiguration.xml configure the RedisStorage provider like th
 
 The following attributes can be used on the `<Provider/>` tag to configure the provider:
 
-* __UseJsonFormat="true/false/both"__ (optional) Defaults to `false`, if set to `false` the Orleans binary serializer is used (this is recommended, as the JSON serializer is unable to serialize certain types).  if set to `true` json data is serialized.  if set to `both` then both json and binary data is produced and persisted, but the binary data is used for deserialization.
+* __UseJsonFormat="true/false/both"__ (optional) Defaults to `false`, if set to `false` the Orleans binary serializer is used (this is recommended, as the JSON serializer is unable to serialize certain types).  if set to `true` json data is serialized.  if set to `both` then both json and binary data is produced and persisted, but the binary data is used for deserialization(meant for debugging purposes).
 * __ConnectionString="..."__ (required) the connection string to your SQLServer database (i.e. `any standard SQL Server connection string`)
 
 
