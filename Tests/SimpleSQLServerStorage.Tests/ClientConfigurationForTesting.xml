@@ -1,5 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ClientConfiguration xmlns="urn:orleans">
+
+  <StreamProviders>
+    <Provider Type="Orleans.Providers.Streams.SimpleMessageStream.SimpleMessageStreamProvider" Name="SMSProvider" FireAndForgetDelivery="false"/>
+  </StreamProviders>
+
+  
   <Gateway Address="localhost" Port="40000"/>
   <!-- To turn tracing off, set DefaultTraceLevel="Off" and have no overrides.
     For the trace log file name, {0} is replaced by "Client" and {1} is the current time. -->

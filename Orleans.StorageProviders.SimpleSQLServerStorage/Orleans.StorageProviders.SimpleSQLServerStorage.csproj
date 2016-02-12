@@ -65,14 +65,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="KeyValueBinary.cs" />
+    <Compile Include="KeyValueStore.cs" />
     <Compile Include="KeyValueDbConfiguration.cs" />
     <Compile Include="KeyValueDbContext.cs" />
-    <Compile Include="KeyValueJson.cs" />
     <Compile Include="SimpleSQLServerProviderErrorCodes.cs" />
     <Compile Include="SimpleSQLServerStorage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="StorageName.cs" />
+    <Compile Include="StorageFormatEnum.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

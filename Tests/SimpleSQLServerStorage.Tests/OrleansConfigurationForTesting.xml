@@ -2,12 +2,21 @@
 <OrleansConfiguration xmlns="urn:orleans">
   <Globals>
     <StorageProviders>
-      <Provider Type="Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage" Name="PubStore"
-                ConnectionString="Server=.;Database=testingpubsubstore;Trusted_Connection=True;"  />
+      <Provider Type="Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage" Name="PubSubStore"
+                ConnectionString="Server=.;Database=testingpubsubstore;Trusted_Connection=True;"
+                UseJsonFormat="both" />
+      
       <Provider Type="Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage" Name="basic"
-                ConnectionString="Server=.;Database=testingpubsubstore;Trusted_Connection=True;"  />
-      <!--<Provider Type="Orleans.Storage.AzureTableStorage" Name="AzureStore" />-->
+                ConnectionString="Server=.;Database=basic;Trusted_Connection=True;"
+                UseJsonFormat="both" />
     </StorageProviders>
+
+    <StreamProviders>
+      <Provider Type="Orleans.Providers.Streams.SimpleMessageStream.SimpleMessageStreamProvider" Name="SMSProvider" FireAndForgetDelivery="false"/>
+    </StreamProviders>
+
+
+
     <SeedNode Address="localhost" Port="22222"/>
     <Messaging ResponseTimeout="30s"/>
   </Globals>
