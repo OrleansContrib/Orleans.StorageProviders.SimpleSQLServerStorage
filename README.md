@@ -26,6 +26,15 @@ in your OrleansConfiguration.xml configure the provider like this:
     </StorageProviders>
 ```
 
+## Setup
+If using SQLServer proper, create an empty database and make sure the connecting user has the following permissions
+'''sql
+[db_datareader]
+[db_datawriter]
+[db_ddladmin]
+'''
+
+
 ## Configuration
 
 The following attributes can be used on the `<Provider/>` tag to configure the provider:
