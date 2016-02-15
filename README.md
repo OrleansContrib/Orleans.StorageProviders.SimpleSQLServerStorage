@@ -28,11 +28,11 @@ in your OrleansConfiguration.xml configure the provider like this:
 
 ## Setup
 If using SQLServer proper, create an empty database and make sure the connecting user has the following permissions
-'''sql
+```sql
 [db_datareader]
 [db_datawriter]
 [db_ddladmin]
-'''
+```
 
 
 ## Configuration
