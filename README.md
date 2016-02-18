@@ -1,10 +1,14 @@
 # Orleans.StorageProviders.SimpleSQLServerStorage
 
-[![Build status](https://ci.appveyor.com/api/projects/status/va1btwb5dkmldoe4?svg=true)](https://ci.appveyor.com/project/amccool/orleans-storageproviders-simplesqlserverstorage)
+[![Build status](https://ci.appveyor.com/api/projects/status/2nhdpoljh1k470le?svg=true)](https://ci.appveyor.com/project/OrleansContrib/orleans-storageproviders-simplesqlserverstorage)
 
 A KeyValue SQLServer implementation of the Orleans Storage Provider model. Uses an EF code-first table to store grain keys with binary and/or json serialized data
 
 ## Usage
+
+```ps
+Install-Package Orleans.StorageProviders.SimpleSQLServerStorage
+```
 
 Decorate your grain with the StorageProvider attribute e.g.
 
