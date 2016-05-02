@@ -17,22 +17,44 @@ namespace SimpleSQLServerStorage.Tests
     [DeploymentItem("OrleansProviders.dll")]
     [DeploymentItem("Orleans.StorageProviders.SimpleSQLServerStorage.dll")]
     [DeploymentItem("SimpleGrains.dll")]
+    // EF is creating this file for us     [DeploymentItem("basic.mdf")]
     [TestClass]
-    public class GrainStorageTests : TestingSiloHost
+    public class GrainStorageTests
     {
+        public static TestingSiloHost testingHost;
+
         private readonly TimeSpan timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
 
-        public GrainStorageTests()
-            : base(new TestingSiloOptions
+        private TestContext testContextInstance;
+
+        public TestContext TestContext
+        {
+            get { return testContextInstance; }
+            set { testContextInstance = value; }
+        }
+
+        [ClassInitialize]
+        public static void SetUp(TestContext context)
+        {
+            testingHost = new TestingSiloHost(new TestingSiloOptions
             {
-                StartFreshOrleans = true,
                 SiloConfigFile = new FileInfo("OrleansConfigurationForTesting.xml"),
+                StartFreshOrleans = true,
+
+                AdjustConfig = config =>
+                {
+                    config.Globals.RegisterStorageProvider<Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage>(providerName: "basic", properties:
+                        new Dictionary<string, string>                        {
+                            { "ConnectionString" , string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(context.DeploymentDirectory, "basic.mdf"))},
+                            { "TableName", "basic"},
+                            { "UseJsonFormat", "both" }
+                        });
+                }
             },
             new TestingClientOptions()
             {
                 ClientConfigFile = new FileInfo("ClientConfigurationForTesting.xml")
-            })
-        {
+            });
         }
 
         [ClassCleanup]
@@ -41,7 +63,7 @@ namespace SimpleSQLServerStorage.Tests
             // Optional. 
             // By default, the next test class which uses TestignSiloHost will
             // cause a fresh Orleans silo environment to be created.
-            StopAllSilos();
+            testingHost.StopAllSilos();
         }
 
 
@@ -49,7 +71,7 @@ namespace SimpleSQLServerStorage.Tests
         [TestMethod]
         public async Task TestMethodGetAGrainTest()
         {
-            var g = GrainFactory.GetGrain<IMyGrain>(0);
+            var g = testingHost.GrainFactory.GetGrain<IMyGrain>(0);
 
             await g.SaveSomething(1, "ff", Guid.NewGuid(), DateTime.Now, new int[] { 1, 2, 3, 4, 5 });
         }
@@ -66,7 +88,7 @@ namespace SimpleSQLServerStorage.Tests
 
 
             // insert your grain test code here
-            var grain = GrainFactory.GetGrain<IMyGrain>(rndId1);
+            var grain = testingHost.GrainFactory.GetGrain<IMyGrain>(rndId1);
 
             var thing4 = new DateTime();
             var thing3 = Guid.NewGuid();
@@ -84,27 +106,35 @@ namespace SimpleSQLServerStorage.Tests
             CollectionAssert.AreEqual(things, res.ToList());
         }
 
-        [TestMethod]
-        public void PubSubStoreTest()
-        {
 
-        }
 
         [TestMethod]
-        public async Task StreamingPubSubStoreTest()
+        public async Task StateTestGrainTest()
         {
-            var strmId = Guid.NewGuid();
+            var rnd = new Random();
+            var rndId1 = rnd.Next();
+            var rndId2 = rnd.Next();
 
-            var streamProv = GrainClient.GetStreamProvider("SMSProvider");
-            IAsyncStream<int> stream = streamProv.GetStream<int>(strmId, "test1");
 
-            StreamSubscriptionHandle<int> handle = await stream.SubscribeAsync(
-                (e, t) => { return TaskDone.Done; },
-                e => { return TaskDone.Done; });
+
+            // insert your grain test code here
+            var grain = testingHost.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
+
+            var thing4 = new DateTime();
+            var thing3 = Guid.NewGuid();
+            var thing1 = 1;
+            var thing2 = "ggggggggggggggggg";
+            var things = new List<int> { 5, 6, 7, 8, 9 };
+
+            await grain.SaveSomething(thing1, thing2, thing3, thing4, things);
+
+            Assert.AreEqual(thing1, await grain.GetThing1());
+            Assert.AreEqual(thing2, await grain.GetThing2());
+            Assert.AreEqual(thing3, await grain.GetThing3());
+            Assert.AreEqual(thing4, await grain.GetThing4());
+            var res = await grain.GetThings1();
+            CollectionAssert.AreEqual(things, res.ToList());
         }
-
-
-
 
 
     }
