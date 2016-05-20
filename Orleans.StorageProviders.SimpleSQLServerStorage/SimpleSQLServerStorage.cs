@@ -12,6 +12,7 @@ using System.Data.Entity;
 using Orleans.Serialization;
 using System.Data.Entity.Core.Objects;
 using System.Data.Entity.Migrations;
+using System.Data.Entity.Validation;
 
 namespace Orleans.StorageProviders.SimpleSQLServerStorage
 {
@@ -195,11 +196,30 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                 BinaryContent = payload,
                 GrainKeyId = primaryKey,
             };
-
-            using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
+            try
             {
-                db.Set<KeyValueStore>().AddOrUpdate(kvb);
-                await db.SaveChangesAsync();
+                using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
+                {
+                    db.Set<KeyValueStore>().AddOrUpdate(kvb);
+                    await db.SaveChangesAsync();
+                }
+            }
+            catch (DbEntityValidationException dbEx)
+            {
+                Log.Error(0, "Failed to WriteState", dbEx);
+                foreach (var entityValidationErrors in dbEx.EntityValidationErrors)
+                {
+                    foreach (var dbValidationError in entityValidationErrors.ValidationErrors)
+                    {
+                        Log.Warn(0, "PropertyName: {0} ErrorMessage: {1}", dbValidationError.PropertyName, dbValidationError.ErrorMessage);
+                    }
+                }
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(0, "Failed to WriteState", ex);
+                throw;
             }
         }
 

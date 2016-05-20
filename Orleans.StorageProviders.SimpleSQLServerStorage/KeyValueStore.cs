@@ -10,8 +10,11 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
     class KeyValueStore
     {
         [Key]
+        [MaxLength(1024)]
         public string GrainKeyId { get; set; }
+        [MaxLength]
         public byte[] BinaryContent { get; set; }
+        [MaxLength]
         public string JsonContext { get; set; }
 
         //public int StorageNameId { get; set; }
