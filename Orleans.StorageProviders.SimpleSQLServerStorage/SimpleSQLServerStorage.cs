@@ -12,6 +12,7 @@ using System.Data.Entity;
 using Orleans.Serialization;
 using System.Data.Entity.Core.Objects;
 using System.Data.Entity.Migrations;
+using System.Data.Entity.Validation;
 
 namespace Orleans.StorageProviders.SimpleSQLServerStorage
 {
@@ -101,7 +102,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 
         /// <summary> Read state data function for this storage provider. </summary>
         /// <see cref="IStorageProvider#ReadStateAsync"/>
-        public async Task ReadStateAsync(string grainType, GrainReference grainReference, GrainState grainState)
+        public async Task ReadStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
         {
             var primaryKey = grainReference.ToKeyString();
 
@@ -112,7 +113,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                     grainType, primaryKey, grainReference, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
             }
 
-            var data = new Dictionary<string, object>();
+            //var data = new Dictionary<string, object>();
 
             using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
             {
@@ -123,46 +124,69 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                         {
                             var value = await db.KeyValues.Where(s => s.GrainKeyId.Equals(primaryKey)).Select(s => s.BinaryContent).SingleOrDefaultAsync();
                             if (value != null)
-                                data = SerializationManager.DeserializeFromByteArray<Dictionary<string, object>>(value);
+                            {
+                                //data = SerializationManager.DeserializeFromByteArray<Dictionary<string, object>>(value);
+                                grainState.State = SerializationManager.DeserializeFromByteArray<object>(value);
+                            }
                         }
                         break;
                     case StorageFormatEnum.Json:
                         {
                             var value = await db.KeyValues.Where(s => s.GrainKeyId.Equals(primaryKey)).Select(s => s.JsonContext).SingleOrDefaultAsync();
                             if (!string.IsNullOrEmpty(value))
-                                data = JsonConvert.DeserializeObject<Dictionary<string, object>>(value, jsonSettings);
+                            {
+                                //data = JsonConvert.DeserializeObject<Dictionary<string, object>>(value, jsonSettings);
+                                grainState.State = JsonConvert.DeserializeObject(value, grainState.State.GetType(), jsonSettings);
+                            }
                         }
                         break;
                     default:
                         break;
                 }
             }
-            grainState.SetAll(data);
+            //grainState.SetAll(data);
 
-            grainState.Etag = Guid.NewGuid().ToString();
+            grainState.ETag = Guid.NewGuid().ToString();
         }
+
+
+
+
+
+
+
+
+
+
+
+
 
         /// <summary> Write state data function for this storage provider. </summary>
         /// <see cref="IStorageProvider#WriteStateAsync"/>
-        public async Task WriteStateAsync(string grainType, GrainReference grainReference, GrainState grainState)
+        public async Task WriteStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
         {
             var primaryKey = grainReference.ToKeyString();
             if (Log.IsVerbose3)
             {
                 Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerProvide_WritingData,
                     "Writing: GrainType={0} PrimaryKey={1} Grainid={2} ETag={3} to DataSource={4}",
-                    grainType, primaryKey, grainReference, grainState.Etag, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
+                    grainType, primaryKey, grainReference, grainState.ETag, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
             }
-            var data = grainState.AsDictionary();
+            //var data = grainState.AsDictionary();
+            var data = grainState.State;
 
             byte[] payload = null;
             string jsonpayload = string.Empty;
 
             if (this.useJsonOrBinaryFormat != StorageFormatEnum.Json)
+            {
                 payload = SerializationManager.SerializeToByteArray(data);
+            }
 
-            if(this.useJsonOrBinaryFormat == StorageFormatEnum.Json || this.useJsonOrBinaryFormat == StorageFormatEnum.Both)
+            if (this.useJsonOrBinaryFormat == StorageFormatEnum.Json || this.useJsonOrBinaryFormat == StorageFormatEnum.Both)
+            {
                 jsonpayload = JsonConvert.SerializeObject(data, jsonSettings);
+            }
 
 
             //await redisDatabase.StringSetAsync(primaryKey, json);
@@ -172,11 +196,30 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                 BinaryContent = payload,
                 GrainKeyId = primaryKey,
             };
-
-            using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
+            try
             {
-                db.Set<KeyValueStore>().AddOrUpdate(kvb);
-                await db.SaveChangesAsync();
+                using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
+                {
+                    db.Set<KeyValueStore>().AddOrUpdate(kvb);
+                    await db.SaveChangesAsync();
+                }
+            }
+            catch (DbEntityValidationException dbEx)
+            {
+                Log.Error(0, "Failed to WriteState", dbEx);
+                foreach (var entityValidationErrors in dbEx.EntityValidationErrors)
+                {
+                    foreach (var dbValidationError in entityValidationErrors.ValidationErrors)
+                    {
+                        Log.Warn(0, "PropertyName: {0} ErrorMessage: {1}", dbValidationError.PropertyName, dbValidationError.ErrorMessage);
+                    }
+                }
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(0, "Failed to WriteState", ex);
+                throw;
             }
         }
 
@@ -184,14 +227,14 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
         /// <remarks>
         /// </remarks>
         /// <see cref="IStorageProvider#ClearStateAsync"/>
-        public async Task ClearStateAsync(string grainType, GrainReference grainReference, GrainState grainState)
+        public async Task ClearStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
         {
             var primaryKey = grainReference.ToKeyString();
             if (Log.IsVerbose3)
             {
                 Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerStorageProvider_ClearingData,
                     "Clearing: GrainType={0} Pk={1} Grainid={2} ETag={3} DeleteStateOnClear={4} from DataSource={5}",
-                    grainType, primaryKey, grainReference, grainState.Etag, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
+                    grainType, primaryKey, grainReference, grainState.ETag, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
             }
             var entity = new KeyValueStore() { GrainKeyId = primaryKey };
             using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
