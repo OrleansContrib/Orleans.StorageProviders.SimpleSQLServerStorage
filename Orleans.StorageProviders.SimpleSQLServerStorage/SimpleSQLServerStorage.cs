@@ -215,8 +215,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
             if (Log.IsVerbose3)
             {
                 Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerStorageProvider_ClearingData,
-                    "Clearing: GrainType={0} Pk={1} Grainid={2} ETag={3} DeleteStateOnClear={4} from DataSource={5}",
-                    grainType, primaryKey, grainReference, grainState.ETag, this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog);
+                    $"Clearing: GrainType={grainType} Pk={primaryKey} Grainid={grainReference} ETag={grainState.ETag} from DataSource={this.sqlconnBuilder.DataSource} Catalog={this.sqlconnBuilder.InitialCatalog}");
             }
             var entity = new KeyValueStore() { GrainKeyId = primaryKey };
             using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
