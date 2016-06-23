@@ -74,6 +74,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="ProviderConfigurationExtensions.cs" />
     <Compile Include="PubSubStoreTests.cs" />
     <Compile Include="GrainStorageTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

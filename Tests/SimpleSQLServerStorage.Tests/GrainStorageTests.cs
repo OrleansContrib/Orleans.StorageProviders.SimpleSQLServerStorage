@@ -23,11 +23,7 @@ namespace SimpleSQLServerStorage.Tests
     [TestClass]
     public class GrainStorageTests
     {
-
         const string STREAMPROVIDERNAME = @"streamprovidername";
-
-
-
 
         #region Orleans Stuff
         private static TestCluster testingCluster;
@@ -69,29 +65,26 @@ namespace SimpleSQLServerStorage.Tests
             testingCluster.StopAllSilos();
         }
 
+        //[TestInitialize]
+
 
         public static TestCluster CreateTestCluster(TestContext context)
         {
-            var options = new TestClusterOptions(10);
+            var options = new TestClusterOptions(3);
 
             //options.ClusterConfiguration.AddMemoryStorageProvider("Default");
             //options.ClusterConfiguration.AddSimpleMessageStreamProvider(STREAMPROVIDERNAME);
 
             options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
-            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Verbose;
+            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Verbose3;
             options.ClusterConfiguration.Defaults.TraceLevelOverrides.Add(new Tuple<string, Severity>("StreamConsumerExtension", Severity.Verbose3));
 
-            options.ClusterConfiguration.Globals.RegisterStorageProvider<Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage>(
-                providerName: "basic", 
-                properties:
-                        new Dictionary<string, string>                        {
-                            { "ConnectionString" , string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(context.DeploymentDirectory, "basic.mdf"))},
-                            { "TableName", "basic"},
-                            { "UseJsonFormat", "both" }
-                        });
+            options.ClusterConfiguration.AddMemoryStorageProvider("memtester");
+            options.ClusterConfiguration.AddSimpleSQLStorageProvider("basic",
+                string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(context.DeploymentDirectory, "basic.mdf")), "true");
 
             //options.ClientConfiguration.AddSimpleMessageStreamProvider(STREAMPROVIDERNAME);
-            options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Verbose;
+            options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Verbose3;
 
             return new TestCluster(options);
         }
@@ -165,6 +158,19 @@ namespace SimpleSQLServerStorage.Tests
             Assert.AreEqual(thing4, await grain.GetThing4());
             var res = await grain.GetThings1();
             CollectionAssert.AreEqual(things, res.ToList());
+        }
+
+        [TestMethod]
+        public async Task ClearStateTest()
+        {
+            var rnd = new Random();
+            var rndId1 = rnd.Next();
+
+            var grain = testingCluster.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
+
+            await grain.SaveSomething(5, "ggg", Guid.NewGuid(), DateTime.Now, new int[] { 1, 2, 2, 3 });
+
+            await grain.ClearTheState();
         }
 
 

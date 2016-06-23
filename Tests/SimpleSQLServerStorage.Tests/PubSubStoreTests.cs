@@ -11,6 +11,7 @@ using Orleans;
 using Orleans.Streams;
 using Orleans.TestingHost.Utils;
 using Orleans.Runtime;
+using Orleans.Runtime.Configuration;
 
 namespace SimpleSQLServerStorage.Tests
 {
@@ -23,12 +24,20 @@ namespace SimpleSQLServerStorage.Tests
     [TestClass]
     public class PubSubStoreTests
     {
-        public static TestingSiloHost testingHost;
-        public static Logger logger;
 
 
-        private readonly TimeSpan timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
         private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+
+        #region Orleans Stuff
+        private static TestCluster testingCluster;
+
+        public Logger Logger
+        {
+            get { return GrainClient.Logger; }
+        }
+
+
+        private readonly TimeSpan _timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
 
         private TestContext testContextInstance;
 
@@ -38,41 +47,15 @@ namespace SimpleSQLServerStorage.Tests
             set { testContextInstance = value; }
         }
 
-        [TestInitialize()]
-        public void Initialize()
+        public PubSubStoreTests()
         { }
-
-        [TestCleanup()]
-        public void Cleanup()
-        { }
-
 
 
         [ClassInitialize]
         public static void SetUp(TestContext context)
         {
-            testingHost = new TestingSiloHost(new TestingSiloOptions
-            {
-                SiloConfigFile = new FileInfo("OrleansConfigurationForTesting.xml"),
-                StartFreshOrleans = true,
-
-                AdjustConfig = config =>
-                {
-                    config.Globals.RegisterStorageProvider<Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage>(providerName: "PubSubStore", properties:
-                        new Dictionary<string, string>                        {
-                            { "ConnectionString" , string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", 
-                                Path.Combine(context.DeploymentDirectory, "PubSubStore.mdf"))},
-                            { "TableName", "lllll"},
-                            { "UseJsonFormat", "both" }
-                        });
-                }
-            },
-            new TestingClientOptions()
-            {
-                ClientConfigFile = new FileInfo("ClientConfigurationForTesting.xml")
-            });
-
-            logger = GrainClient.Logger;
+            testingCluster = CreateTestCluster(context);
+            testingCluster.Deploy();
         }
 
         [ClassCleanup]
@@ -81,10 +64,31 @@ namespace SimpleSQLServerStorage.Tests
             // Optional. 
             // By default, the next test class which uses TestignSiloHost will
             // cause a fresh Orleans silo environment to be created.
-            testingHost.StopAllSilos();
+            testingCluster.StopAllSilos();
         }
 
 
+        public static TestCluster CreateTestCluster(TestContext context)
+        {
+            var options = new TestClusterOptions(3);
+
+            //options.ClusterConfiguration.AddMemoryStorageProvider("Default");
+            options.ClusterConfiguration.AddSimpleMessageStreamProvider("SMSProvider");
+
+            options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
+            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Verbose;
+            options.ClusterConfiguration.Defaults.TraceLevelOverrides.Add(new Tuple<string, Severity>("StreamConsumerExtension", Severity.Verbose3));
+
+
+            options.ClusterConfiguration.AddSimpleSQLStorageProvider("PubSubStore",
+                string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(context.DeploymentDirectory, "PubSubStore.mdf")), "true");
+
+            options.ClientConfiguration.AddSimpleMessageStreamProvider("SMSProvider");
+            options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Verbose;
+
+            return new TestCluster(options);
+        }
+        #endregion
 
         [TestMethod]
         public async Task PubSubStoreTest()
@@ -138,25 +142,25 @@ namespace SimpleSQLServerStorage.Tests
             {
                 if (numProduced <= 0)
                 {
-                    logger.Info("numProduced <= 0: Events were not produced");
+                    Logger.Info("numProduced <= 0: Events were not produced");
                 }
                 if (consumerCount != numConsumed.Count)
                 {
-                    logger.Info("consumerCount != numConsumed.Count: Incorrect number of consumers. consumerCount = {0}, numConsumed.Count = {1}",
+                    Logger.Info("consumerCount != numConsumed.Count: Incorrect number of consumers. consumerCount = {0}, numConsumed.Count = {1}",
                         consumerCount, numConsumed.Count);
                 }
                 foreach (var consumed in numConsumed)
                 {
                     if (numProduced != consumed.Value.Item1)
                     {
-                        logger.Info("numProduced != consumed: Produced and consumed counts do not match. numProduced = {0}, consumed = {1}",
+                        Logger.Info("numProduced != consumed: Produced and consumed counts do not match. numProduced = {0}, consumed = {1}",
                             numProduced, consumed.Key.HandleId + " -> " + consumed.Value);
                         //numProduced, Utils.DictionaryToString(numConsumed));
                     }
                 }
                 return false;
             }
-            logger.Info("All counts are equal. numProduced = {0}, numConsumed = {1}", numProduced,
+            Logger.Info("All counts are equal. numProduced = {0}, numConsumed = {1}", numProduced,
                 Utils.EnumerableToString(numConsumed, kvp => kvp.Key.HandleId.ToString() + "->" + kvp.Value.ToString()));
             return true;
         }
