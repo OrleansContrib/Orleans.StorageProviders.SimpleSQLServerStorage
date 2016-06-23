@@ -23,5 +23,7 @@ namespace SimpleGrainInterfaces
         Task<IEnumerable<int>> GetThings1();
         Task SetThings1(IEnumerable<int> v);
 
+        Task ClearTheState();
+
     }
 }

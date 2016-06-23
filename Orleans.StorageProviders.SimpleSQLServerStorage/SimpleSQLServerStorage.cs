@@ -43,7 +43,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 
         /// <summary> Initialization function for this storage provider. </summary>
         /// <see cref="IProvider#Init"/>
-        public async Task Init(string name, IProviderRuntime providerRuntime, IProviderConfiguration config)
+        public Task Init(string name, IProviderRuntime providerRuntime, IProviderConfiguration config)
         {
             Name = name;
             serviceId = providerRuntime.ServiceId.ToString();
@@ -83,6 +83,8 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
             };
 
             Log = providerRuntime.GetLogger("StorageProvider.SimpleSQLServerStorage." + serviceId);
+
+            return TaskDone.Done;
         }
 
         // Internal method to initialize for testing
