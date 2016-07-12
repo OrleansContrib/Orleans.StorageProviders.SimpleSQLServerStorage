@@ -88,42 +88,17 @@ namespace SimpleSQLServerStorage.Tests
         #endregion
 
 
-
-        //[ClassInitialize]
-        //public static void SetUp(TestContext context)
-        //{
-        //    testingCluster = CreateTestCluster(context);
-        //    testingCluster.Deploy();
-        //}
-
-        //[ClassCleanup]
-        //public static void ClassCleanup()
-        //{
-        //    // Optional. 
-        //    // By default, the next test class which uses TestignSiloHost will
-        //    // cause a fresh Orleans silo environment to be created.
-        //    testingCluster.StopAllSilos();
-        //}
-
-        //[TestInitialize]
-
-
         public static TestCluster CreateTestCluster()
         {
-            var options = new TestClusterOptions(3);
-
-            //options.ClusterConfiguration.AddMemoryStorageProvider("Default");
-            //options.ClusterConfiguration.AddSimpleMessageStreamProvider(STREAMPROVIDERNAME);
+            var options = new TestClusterOptions();
 
             options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
             options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
-            options.ClusterConfiguration.Defaults.TraceLevelOverrides.Add(new Tuple<string, Severity>("StreamConsumerExtension", Severity.Verbose3));
 
             options.ClusterConfiguration.AddMemoryStorageProvider("memtester");
             options.ClusterConfiguration.AddSimpleSQLStorageProvider("basic",
                 string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "basic.mdf")), "true");
 
-            //options.ClientConfiguration.AddSimpleMessageStreamProvider(STREAMPROVIDERNAME);
             options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
 
             return new TestCluster(options);

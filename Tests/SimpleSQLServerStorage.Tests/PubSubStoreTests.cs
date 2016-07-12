@@ -25,7 +25,7 @@ namespace SimpleSQLServerStorage.Tests
     //[TestClass]
     public class PubSubStoreTests
     {
-        private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+        private static readonly string StreamProviderName = "sms";
 
         #region Orleans Stuff
         private static TestCluster testingCluster;
@@ -93,21 +93,19 @@ namespace SimpleSQLServerStorage.Tests
 
         public static TestCluster CreateTestCluster()
         {
-            var options = new TestClusterOptions(3);
+            var options = new TestClusterOptions();
 
             //options.ClusterConfiguration.AddMemoryStorageProvider("Default");
-            options.ClusterConfiguration.AddSimpleMessageStreamProvider("SMSProvider");
-
-            options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
-            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
-            options.ClusterConfiguration.Defaults.TraceLevelOverrides.Add(new Tuple<string, Severity>("StreamConsumerExtension", Severity.Verbose3));
-
-
             options.ClusterConfiguration.AddMemoryStorageProvider("memtester");
             options.ClusterConfiguration.AddSimpleSQLStorageProvider("PubSubStore",
                 string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PubSubStore.mdf")), "true");
+            options.ClusterConfiguration.AddSimpleMessageStreamProvider(StreamProviderName);
 
-            options.ClientConfiguration.AddSimpleMessageStreamProvider("SMSProvider");
+            options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
+            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
+            //options.ClusterConfiguration.Defaults.TraceLevelOverrides.Add(new Tuple<string, Severity>("StreamConsumerExtension", Severity.Verbose3));
+
+            options.ClientConfiguration.AddSimpleMessageStreamProvider(StreamProviderName);
             options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
 
             return new TestCluster(options);
@@ -119,7 +117,7 @@ namespace SimpleSQLServerStorage.Tests
         {
             var streamGuid = Guid.NewGuid();
             string streamNamespace = "xxxx";
-            string streamProviderName = "SMSProvider";
+            string streamProviderName = StreamProviderName;
 
             // get producer and consumer
             var producer = GrainClient.GrainFactory.GetGrain<IStreamerOutGrain>(Guid.NewGuid());
@@ -137,7 +135,7 @@ namespace SimpleSQLServerStorage.Tests
             await producer.StopPeriodicProducing();
 
             // check
-            await TestingUtils.WaitUntilAsync(lastTry => CheckCounters(producer, consumer, 2, lastTry), Timeout);
+            await TestingUtils.WaitUntilAsync(lastTry => CheckCounters(producer, consumer, 2, lastTry), _timeout);
 
             // unsubscribe
             await consumer.StopConsuming(firstSubscriptionHandle);
@@ -195,7 +193,7 @@ namespace SimpleSQLServerStorage.Tests
         {
             var strmId = Guid.NewGuid();
 
-            var streamProv = GrainClient.GetStreamProvider("SMSProvider");
+            var streamProv = GrainClient.GetStreamProvider(StreamProviderName);
             IAsyncStream<int> stream = streamProv.GetStream<int>(strmId, "test1");
 
             StreamSubscriptionHandle<int> handle = await stream.SubscribeAsync(
