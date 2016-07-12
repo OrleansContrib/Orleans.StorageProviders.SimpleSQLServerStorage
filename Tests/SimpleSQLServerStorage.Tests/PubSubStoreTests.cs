@@ -76,7 +76,7 @@ namespace SimpleSQLServerStorage.Tests
             options.ClusterConfiguration.AddSimpleMessageStreamProvider("SMSProvider");
 
             options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
-            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Verbose;
+            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
             options.ClusterConfiguration.Defaults.TraceLevelOverrides.Add(new Tuple<string, Severity>("StreamConsumerExtension", Severity.Verbose3));
 
 
@@ -84,7 +84,7 @@ namespace SimpleSQLServerStorage.Tests
                 string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(context.DeploymentDirectory, "PubSubStore.mdf")), "true");
 
             options.ClientConfiguration.AddSimpleMessageStreamProvider("SMSProvider");
-            options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Verbose;
+            options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
 
             return new TestCluster(options);
         }
