@@ -115,6 +115,10 @@ namespace SimpleSQLServerStorage.Tests
         [Fact]
         public async Task PubSubStoreTest()
         {
+            await Task.Delay(3000);
+
+
+
             var streamGuid = Guid.NewGuid();
             string streamNamespace = "xxxx";
             string streamProviderName = StreamProviderName;
@@ -191,6 +195,10 @@ namespace SimpleSQLServerStorage.Tests
         [Fact]
         public async Task StreamingPubSubStoreTest()
         {
+
+            await Task.Delay(3000);
+
+
             var strmId = Guid.NewGuid();
 
             var streamProv = GrainClient.GetStreamProvider(StreamProviderName);

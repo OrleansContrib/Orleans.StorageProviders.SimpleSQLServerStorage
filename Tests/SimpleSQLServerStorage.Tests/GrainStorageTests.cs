@@ -95,6 +95,8 @@ namespace SimpleSQLServerStorage.Tests
             options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
             options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
 
+            options.ClusterConfiguration.Defaults.TraceFileName = string.Empty;
+
             options.ClusterConfiguration.AddMemoryStorageProvider("memtester");
             options.ClusterConfiguration.AddSimpleSQLStorageProvider("basic",
                 string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "basic.mdf")), "true");
@@ -120,6 +122,12 @@ namespace SimpleSQLServerStorage.Tests
         [Fact]
         public async Task TestGrains()
         {
+
+            await Task.Delay(3000);
+
+
+
+
             var rnd = new Random();
             var rndId1 = rnd.Next();
             var rndId2 = rnd.Next();
