@@ -22,12 +22,13 @@ namespace SimpleSQLServerStorage.Tests
             string connectionString,
             string UseJsonFormat)
         {
-            if (string.IsNullOrWhiteSpace(providerName)) throw new ArgumentNullException(nameof(providerName));
+            if (string.IsNullOrWhiteSpace(providerName))
+                throw new ArgumentNullException(nameof(providerName));
 
             var properties = new Dictionary<string, string>
             {
                 { "ConnectionString" , connectionString },
-                { "TableName", "basic"},
+                { "TableName", string.Empty},
                 { "UseJsonFormat", UseJsonFormat }
 
             };

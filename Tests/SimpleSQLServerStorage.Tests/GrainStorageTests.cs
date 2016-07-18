@@ -22,10 +22,10 @@ namespace SimpleSQLServerStorage.Tests
     //[DeploymentItem("SimpleGrains.dll")]
     //// EF is creating this file for us     [DeploymentItem("basic.mdf")]
     //[TestClass]
-    public class GrainStorageTests : IDisposable
+    public class GrainStorageTests : TestClusterPerTest, IDisposable
     {
         #region Orleans Stuff
-        private static TestCluster testingCluster;
+        //private static TestCluster testingCluster;
 
         public Logger Logger
         {
@@ -41,8 +41,8 @@ namespace SimpleSQLServerStorage.Tests
         {
             this.output = output;
 
-            testingCluster = CreateTestCluster();
-            testingCluster.Deploy();
+            //testingCluster = CreateTestCluster();
+            //testingCluster.Deploy();
         }
 
 
@@ -60,7 +60,7 @@ namespace SimpleSQLServerStorage.Tests
                     // Optional. 
                     // By default, the next test class which uses TestignSiloHost will
                     // cause a fresh Orleans silo environment to be created.
-                    testingCluster.StopAllSilos();
+                    this.HostedCluster.StopAllSilos();
 
                 }
 
@@ -88,7 +88,7 @@ namespace SimpleSQLServerStorage.Tests
         #endregion
 
 
-        public static TestCluster CreateTestCluster()
+        public override TestCluster CreateTestCluster()
         {
             var options = new TestClusterOptions();
 
@@ -112,7 +112,7 @@ namespace SimpleSQLServerStorage.Tests
         [Fact]
         public async Task TestMethodGetAGrainTest()
         {
-            var g = testingCluster.GrainFactory.GetGrain<IMyGrain>(0);
+            var g = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(0);
 
             await g.SaveSomething(1, "ff", Guid.NewGuid(), DateTime.Now, new int[] { 1, 2, 3, 4, 5 });
         }
@@ -122,12 +122,6 @@ namespace SimpleSQLServerStorage.Tests
         [Fact]
         public async Task TestGrains()
         {
-
-            await Task.Delay(3000);
-
-
-
-
             var rnd = new Random();
             var rndId1 = rnd.Next();
             var rndId2 = rnd.Next();
@@ -135,7 +129,7 @@ namespace SimpleSQLServerStorage.Tests
 
 
             // insert your grain test code here
-            var grain = testingCluster.GrainFactory.GetGrain<IMyGrain>(rndId1);
+            var grain = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(rndId1);
 
             var thing4 = new DateTime();
             var thing3 = Guid.NewGuid();
@@ -165,7 +159,7 @@ namespace SimpleSQLServerStorage.Tests
 
 
             // insert your grain test code here
-            var grain = testingCluster.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
+            var grain = this.HostedCluster.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
 
             var thing4 = new DateTime();
             var thing3 = Guid.NewGuid();
@@ -189,7 +183,7 @@ namespace SimpleSQLServerStorage.Tests
             var rnd = new Random();
             var rndId1 = rnd.Next();
 
-            var grain = testingCluster.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
+            var grain = this.HostedCluster.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
 
             await grain.SaveSomething(5, "ggg", Guid.NewGuid(), DateTime.Now, new int[] { 1, 2, 2, 3 });
 

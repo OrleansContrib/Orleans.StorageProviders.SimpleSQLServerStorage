@@ -23,12 +23,12 @@ namespace SimpleSQLServerStorage.Tests
     //[DeploymentItem("SimpleGrains.dll")]
     //// EF is creating this file for us [DeploymentItem("PubSubStore.mdf")]
     //[TestClass]
-    public class PubSubStoreTests
+    public class PubSubStoreTests : TestClusterPerTest, IDisposable
     {
         private static readonly string StreamProviderName = "sms";
 
         #region Orleans Stuff
-        private static TestCluster testingCluster;
+        //private static TestCluster testingCluster;
 
         public Logger Logger
         {
@@ -44,8 +44,9 @@ namespace SimpleSQLServerStorage.Tests
         {
             this.output = output;
 
-            testingCluster = CreateTestCluster();
-            testingCluster.Deploy();
+            //testingCluster = CreateTestCluster();
+            //testingCluster.Deploy();
+            //testingCluster.InitializeClient();
         }
 
 
@@ -62,7 +63,7 @@ namespace SimpleSQLServerStorage.Tests
                     // Optional. 
                     // By default, the next test class which uses TestignSiloHost will
                     // cause a fresh Orleans silo environment to be created.
-                    testingCluster.StopAllSilos();
+                    this.HostedCluster.StopAllSilos();
 
                 }
 
@@ -91,7 +92,7 @@ namespace SimpleSQLServerStorage.Tests
 
 
 
-        public static TestCluster CreateTestCluster()
+        public override TestCluster CreateTestCluster()
         {
             var options = new TestClusterOptions();
 
@@ -195,10 +196,6 @@ namespace SimpleSQLServerStorage.Tests
         [Fact]
         public async Task StreamingPubSubStoreTest()
         {
-
-            await Task.Delay(3000);
-
-
             var strmId = Guid.NewGuid();
 
             var streamProv = GrainClient.GetStreamProvider(StreamProviderName);

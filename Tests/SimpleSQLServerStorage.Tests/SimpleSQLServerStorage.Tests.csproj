@@ -89,10 +89,12 @@
     <Otherwise />
   </Choose>
   <ItemGroup>
+    <Compile Include="OrleansTestingBase.cs" />
     <Compile Include="ProviderConfigurationExtensions.cs" />
     <Compile Include="PubSubStoreTests.cs" />
     <Compile Include="GrainStorageTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestClusterPerTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="basic.mdf" />
