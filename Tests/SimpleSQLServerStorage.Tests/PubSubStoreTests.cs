@@ -1,5 +1,4 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Orleans.TestingHost;
 using System.Diagnostics;
 using System.IO;
@@ -11,87 +10,119 @@ using Orleans;
 using Orleans.Streams;
 using Orleans.TestingHost.Utils;
 using Orleans.Runtime;
+using Orleans.Runtime.Configuration;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace SimpleSQLServerStorage.Tests
 {
-    [DeploymentItem("ClientConfigurationForTesting.xml")]
-    [DeploymentItem("OrleansConfigurationForTesting.xml")]
-    [DeploymentItem("OrleansProviders.dll")]
-    [DeploymentItem("Orleans.StorageProviders.SimpleSQLServerStorage.dll")]
-    [DeploymentItem("SimpleGrains.dll")]
-    // EF is creating this file for us [DeploymentItem("PubSubStore.mdf")]
-    [TestClass]
-    public class PubSubStoreTests
+    //[DeploymentItem("ClientConfigurationForTesting.xml")]
+    //[DeploymentItem("OrleansConfigurationForTesting.xml")]
+    //[DeploymentItem("OrleansProviders.dll")]
+    //[DeploymentItem("Orleans.StorageProviders.SimpleSQLServerStorage.dll")]
+    //[DeploymentItem("SimpleGrains.dll")]
+    //// EF is creating this file for us [DeploymentItem("PubSubStore.mdf")]
+    //[TestClass]
+    public class PubSubStoreTests : TestClusterPerTest, IDisposable
     {
-        public static TestingSiloHost testingHost;
-        public static Logger logger;
+        private static readonly string StreamProviderName = "sms";
 
+        #region Orleans Stuff
+        //private static TestCluster testingCluster;
 
-        private readonly TimeSpan timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
-        private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
-
-        private TestContext testContextInstance;
-
-        public TestContext TestContext
+        public Logger Logger
         {
-            get { return testContextInstance; }
-            set { testContextInstance = value; }
+            get { return GrainClient.Logger; }
         }
 
-        [TestInitialize()]
-        public void Initialize()
-        { }
 
-        [TestCleanup()]
-        public void Cleanup()
-        { }
+        private readonly TimeSpan _timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
 
+        private readonly ITestOutputHelper output;
 
-
-        [ClassInitialize]
-        public static void SetUp(TestContext context)
+        public PubSubStoreTests(ITestOutputHelper output)
         {
-            testingHost = new TestingSiloHost(new TestingSiloOptions
-            {
-                SiloConfigFile = new FileInfo("OrleansConfigurationForTesting.xml"),
-                StartFreshOrleans = true,
+            this.output = output;
 
-                AdjustConfig = config =>
+            //testingCluster = CreateTestCluster();
+            //testingCluster.Deploy();
+            //testingCluster.InitializeClient();
+        }
+
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
                 {
-                    config.Globals.RegisterStorageProvider<Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage>(providerName: "PubSubStore", properties:
-                        new Dictionary<string, string>                        {
-                            { "ConnectionString" , string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", 
-                                Path.Combine(context.DeploymentDirectory, "PubSubStore.mdf"))},
-                            { "TableName", "lllll"},
-                            { "UseJsonFormat", "both" }
-                        });
+                    // TODO: dispose managed state (managed objects).
+                    // Optional. 
+                    // By default, the next test class which uses TestignSiloHost will
+                    // cause a fresh Orleans silo environment to be created.
+                    this.HostedCluster.StopAllSilos();
+
                 }
-            },
-            new TestingClientOptions()
-            {
-                ClientConfigFile = new FileInfo("ClientConfigurationForTesting.xml")
-            });
 
-            logger = GrainClient.Logger;
+                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // TODO: set large fields to null.
+
+                disposedValue = true;
+            }
         }
 
-        [ClassCleanup]
-        public static void ClassCleanup()
+        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~FacilityGrainTest() {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
         {
-            // Optional. 
-            // By default, the next test class which uses TestignSiloHost will
-            // cause a fresh Orleans silo environment to be created.
-            testingHost.StopAllSilos();
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
         }
+        #endregion
 
 
 
-        [TestMethod]
+        public override TestCluster CreateTestCluster()
+        {
+            var options = new TestClusterOptions();
+
+            //options.ClusterConfiguration.AddMemoryStorageProvider("Default");
+            options.ClusterConfiguration.AddMemoryStorageProvider("memtester");
+            options.ClusterConfiguration.AddSimpleSQLStorageProvider("PubSubStore",
+                string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PubSubStore.mdf")), "true");
+            options.ClusterConfiguration.AddSimpleMessageStreamProvider(StreamProviderName);
+
+            options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
+            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
+            //options.ClusterConfiguration.Defaults.TraceLevelOverrides.Add(new Tuple<string, Severity>("StreamConsumerExtension", Severity.Verbose3));
+
+            options.ClientConfiguration.AddSimpleMessageStreamProvider(StreamProviderName);
+            options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
+
+            return new TestCluster(options);
+        }
+        #endregion
+
+        [Fact]
         public async Task PubSubStoreTest()
         {
+            await Task.Delay(3000);
+
+
+
             var streamGuid = Guid.NewGuid();
             string streamNamespace = "xxxx";
-            string streamProviderName = "SMSProvider";
+            string streamProviderName = StreamProviderName;
 
             // get producer and consumer
             var producer = GrainClient.GrainFactory.GetGrain<IStreamerOutGrain>(Guid.NewGuid());
@@ -109,7 +140,7 @@ namespace SimpleSQLServerStorage.Tests
             await producer.StopPeriodicProducing();
 
             // check
-            await TestingUtils.WaitUntilAsync(lastTry => CheckCounters(producer, consumer, 2, lastTry), Timeout);
+            await TestingUtils.WaitUntilAsync(lastTry => CheckCounters(producer, consumer, 2, lastTry), _timeout);
 
             // unsubscribe
             await consumer.StopConsuming(firstSubscriptionHandle);
@@ -123,12 +154,12 @@ namespace SimpleSQLServerStorage.Tests
             var numConsumed = await consumer.GetNumberConsumed();
             if (assertIsTrue)
             {
-                Assert.IsTrue(numConsumed.Values.All(v => v.Item2 == 0), "Errors");
-                Assert.IsTrue(numProduced > 0, "Events were not produced");
-                Assert.AreEqual(consumerCount, numConsumed.Count, "Incorrect number of consumers");
+                Assert.True(numConsumed.Values.All(v => v.Item2 == 0), "Errors");
+                Assert.True(numProduced > 0, "Events were not produced");
+                Assert.Equal(consumerCount, numConsumed.Count);//, "Incorrect number of consumers");
                 foreach (int consumed in numConsumed.Values.Select(v => v.Item1))
                 {
-                    Assert.AreEqual(numProduced, consumed, "Produced and consumed counts do not match");
+                    Assert.Equal(numProduced, consumed);//, "Produced and consumed counts do not match");
                 }
             }
             else if (numProduced <= 0 || // no events produced?
@@ -138,36 +169,36 @@ namespace SimpleSQLServerStorage.Tests
             {
                 if (numProduced <= 0)
                 {
-                    logger.Info("numProduced <= 0: Events were not produced");
+                    Logger.Info("numProduced <= 0: Events were not produced");
                 }
                 if (consumerCount != numConsumed.Count)
                 {
-                    logger.Info("consumerCount != numConsumed.Count: Incorrect number of consumers. consumerCount = {0}, numConsumed.Count = {1}",
+                    Logger.Info("consumerCount != numConsumed.Count: Incorrect number of consumers. consumerCount = {0}, numConsumed.Count = {1}",
                         consumerCount, numConsumed.Count);
                 }
                 foreach (var consumed in numConsumed)
                 {
                     if (numProduced != consumed.Value.Item1)
                     {
-                        logger.Info("numProduced != consumed: Produced and consumed counts do not match. numProduced = {0}, consumed = {1}",
+                        Logger.Info("numProduced != consumed: Produced and consumed counts do not match. numProduced = {0}, consumed = {1}",
                             numProduced, consumed.Key.HandleId + " -> " + consumed.Value);
                         //numProduced, Utils.DictionaryToString(numConsumed));
                     }
                 }
                 return false;
             }
-            logger.Info("All counts are equal. numProduced = {0}, numConsumed = {1}", numProduced,
+            Logger.Info("All counts are equal. numProduced = {0}, numConsumed = {1}", numProduced,
                 Utils.EnumerableToString(numConsumed, kvp => kvp.Key.HandleId.ToString() + "->" + kvp.Value.ToString()));
             return true;
         }
 
 
-        [TestMethod]
+        [Fact]
         public async Task StreamingPubSubStoreTest()
         {
             var strmId = Guid.NewGuid();
 
-            var streamProv = GrainClient.GetStreamProvider("SMSProvider");
+            var streamProv = GrainClient.GetStreamProvider(StreamProviderName);
             IAsyncStream<int> stream = streamProv.GetStream<int>(strmId, "test1");
 
             StreamSubscriptionHandle<int> handle = await stream.SubscribeAsync(
