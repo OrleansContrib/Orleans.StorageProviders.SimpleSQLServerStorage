@@ -89,6 +89,7 @@
     <Otherwise />
   </Choose>
   <ItemGroup>
+    <Compile Include="BaseTestClusterFixture.cs" />
     <Compile Include="OrleansTestingBase.cs" />
     <Compile Include="ProviderConfigurationExtensions.cs" />
     <Compile Include="PubSubStoreTests.cs" />

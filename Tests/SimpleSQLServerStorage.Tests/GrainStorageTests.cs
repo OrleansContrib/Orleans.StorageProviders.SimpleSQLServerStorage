@@ -29,13 +29,6 @@ namespace SimpleSQLServerStorage.Tests
         private readonly double timingFactor;
 
         #region Orleans Stuff
-        //private static TestCluster testingCluster;
-
-        public Logger Logger
-        {
-            get { return GrainClient.Logger; }
-        }
-
 
         private readonly TimeSpan _timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
 
@@ -98,16 +91,15 @@ namespace SimpleSQLServerStorage.Tests
         {
             var options = new TestClusterOptions();
 
-            options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
-            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
+            //options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
+            //options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
 
-            options.ClusterConfiguration.Defaults.TraceFileName = string.Empty;
-
-            options.ClusterConfiguration.AddMemoryStorageProvider("memtester");
             options.ClusterConfiguration.AddSimpleSQLStorageProvider("basic",
                 string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "basic.mdf")), "true");
 
-            options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
+            options.ClusterConfiguration.AddSimpleSQLStorageProvider("SimpleSQLStore",
+                string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SimpleSQLStore.mdf")), "true");
+            //options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
 
             return new TestCluster(options);
         }

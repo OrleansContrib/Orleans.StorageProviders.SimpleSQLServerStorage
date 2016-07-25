@@ -96,18 +96,11 @@ namespace SimpleSQLServerStorage.Tests
         {
             var options = new TestClusterOptions();
 
-            //options.ClusterConfiguration.AddMemoryStorageProvider("Default");
-            options.ClusterConfiguration.AddMemoryStorageProvider("memtester");
             options.ClusterConfiguration.AddSimpleSQLStorageProvider("PubSubStore",
                 string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PubSubStore.mdf")), "true");
             options.ClusterConfiguration.AddSimpleMessageStreamProvider(StreamProviderName);
 
-            options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
-            options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
-            //options.ClusterConfiguration.Defaults.TraceLevelOverrides.Add(new Tuple<string, Severity>("StreamConsumerExtension", Severity.Verbose3));
-
             options.ClientConfiguration.AddSimpleMessageStreamProvider(StreamProviderName);
-            options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
 
             return new TestCluster(options);
         }
@@ -116,10 +109,6 @@ namespace SimpleSQLServerStorage.Tests
         [Fact]
         public async Task PubSubStoreTest()
         {
-            await Task.Delay(3000);
-
-
-
             var streamGuid = Guid.NewGuid();
             string streamNamespace = "xxxx";
             string streamProviderName = StreamProviderName;

@@ -1,25 +1,21 @@
 ﻿using Orleans;
+using Orleans.Serialization;
 using Orleans.TestingHost;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SimpleSQLServerStorage.Tests
 {
-    public abstract class TestClusterPerTest : OrleansTestingBase, IDisposable
+    public abstract class BaseTestClusterFixture : IDisposable
     {
-        static TestClusterPerTest()
+        static BaseTestClusterFixture()
         {
-            TestClusterOptions.DefaultTraceToConsole = true;
+            TestClusterOptions.DefaultTraceToConsole = false;
         }
 
-        protected TestCluster HostedCluster { get; private set; }
-
-        public TestClusterPerTest()
+        protected BaseTestClusterFixture()
         {
             GrainClient.Uninitialize();
+            SerializationManager.InitializeForTesting();
             var testCluster = CreateTestCluster();
             if (testCluster.Primary == null)
             {
@@ -28,10 +24,9 @@ namespace SimpleSQLServerStorage.Tests
             this.HostedCluster = testCluster;
         }
 
-        public virtual TestCluster CreateTestCluster()
-        {
-            return new TestCluster();
-        }
+        protected abstract TestCluster CreateTestCluster();
+
+        public TestCluster HostedCluster { get; private set; }
 
         public virtual void Dispose()
         {
