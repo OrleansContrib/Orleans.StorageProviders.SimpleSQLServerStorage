@@ -1,5 +1,4 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Orleans.TestingHost;
 using System.Diagnostics;
 using System.IO;
@@ -9,104 +8,116 @@ using System.Collections.Generic;
 using System.Linq;
 using Orleans;
 using Orleans.Streams;
-using SimpleGrains;
 using Orleans.Runtime;
+using Orleans.Runtime.Configuration;
+using Xunit.Abstractions;
+using Xunit;
+using SimpleGrains;
 using System.Globalization;
 
 namespace SimpleSQLServerStorage.Tests
 {
-    [DeploymentItem("ClientConfigurationForTesting.xml")]
-    [DeploymentItem("OrleansConfigurationForTesting.xml")]
-    [DeploymentItem("OrleansProviders.dll")]
-    [DeploymentItem("Orleans.StorageProviders.SimpleSQLServerStorage.dll")]
-    [DeploymentItem("SimpleGrains.dll")]
-    // EF is creating this file for us     [DeploymentItem("basic.mdf")]
-    [TestClass]
-    public class GrainStorageTests
+    //[DeploymentItem("ClientConfigurationForTesting.xml")]
+    //[DeploymentItem("OrleansConfigurationForTesting.xml")]
+    //[DeploymentItem("OrleansProviders.dll")]
+    //[DeploymentItem("Orleans.StorageProviders.SimpleSQLServerStorage.dll")]
+    //[DeploymentItem("SimpleGrains.dll")]
+    //// EF is creating this file for us     [DeploymentItem("basic.mdf")]
+    //[TestClass]
+    public class GrainStorageTests : TestClusterPerTest, IDisposable
     {
-        public static TestingSiloHost testingHost;
-
-        private readonly TimeSpan timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
-
-        private TestContext testContextInstance;
-
-        public TestContext TestContext
-        {
-            get { return testContextInstance; }
-            set { testContextInstance = value; }
-        }
-
-        protected static readonly Random random = new Random();
-
-        public Logger logger
-        {
-            get { return GrainClient.Logger; }
-        }
-
         private readonly double timingFactor;
 
+        #region Orleans Stuff
 
-        public GrainStorageTests()
+        private readonly TimeSpan _timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
+
+        private readonly ITestOutputHelper output;
+
+        public GrainStorageTests(ITestOutputHelper output)
         {
             timingFactor = CalibrateTimings();
+
+            this.output = output;
+
+            //testingCluster = CreateTestCluster();
+            //testingCluster.Deploy();
         }
 
 
 
-        [ClassInitialize]
-        public static void SetUp(TestContext context)
-        {
-            testingHost = new TestingSiloHost(new TestingSiloOptions
-            {
-                SiloConfigFile = new FileInfo("OrleansConfigurationForTesting.xml"),
-                StartFreshOrleans = true,
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
 
-                AdjustConfig = config =>
+        protected void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
                 {
-                    config.Globals.RegisterStorageProvider<Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage>(providerName: "basic", 
-                        properties:
-                        new Dictionary<string, string>                        {
-                            { "ConnectionString" , string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(context.DeploymentDirectory, "basic.mdf"))},
-                            { "TableName", "basic"},
-                            { "UseJsonFormat", "both" }
-                        });
-                    config.Globals.RegisterStorageProvider<Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage>(providerName: "SimpleSQLStore",
-                        properties:
-                        new Dictionary<string, string>                        {
-                            { "ConnectionString" , string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(context.DeploymentDirectory, "SimpleSQLStore.mdf"))},
-                            { "TableName", "basic"},
-                            { "UseJsonFormat", "both" }
-                        });
+                    // TODO: dispose managed state (managed objects).
+                    // Optional. 
+                    // By default, the next test class which uses TestignSiloHost will
+                    // cause a fresh Orleans silo environment to be created.
+                    this.HostedCluster.StopAllSilos();
+
                 }
-            },
-            new TestingClientOptions()
-            {
-                ClientConfigFile = new FileInfo("ClientConfigurationForTesting.xml")
-            });
+
+                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // TODO: set large fields to null.
+
+                disposedValue = true;
+            }
         }
 
-        [ClassCleanup]
-        public static void ClassCleanup()
+        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~FacilityGrainTest() {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+        public override void Dispose()
         {
-            // Optional. 
-            // By default, the next test class which uses TestignSiloHost will
-            // cause a fresh Orleans silo environment to be created.
-            testingHost.StopAllSilos();
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
         }
+        #endregion
+
+
+        public override TestCluster CreateTestCluster()
+        {
+            var options = new TestClusterOptions();
+
+            //options.ClusterConfiguration.Globals.ClientDropTimeout = TimeSpan.FromSeconds(5);
+            //options.ClusterConfiguration.Defaults.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
+
+            options.ClusterConfiguration.AddSimpleSQLStorageProvider("basic",
+                string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "basic.mdf")), "true");
+
+            options.ClusterConfiguration.AddSimpleSQLStorageProvider("SimpleSQLStore",
+                string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SimpleSQLStore.mdf")), "true");
+            //options.ClientConfiguration.DefaultTraceLevel = Orleans.Runtime.Severity.Warning;
+
+            return new TestCluster(options);
+        }
+        #endregion
 
 
 
-        [TestMethod]
+        [Fact]
         public async Task TestMethodGetAGrainTest()
         {
-            var g = testingHost.GrainFactory.GetGrain<IMyGrain>(0);
+            var g = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(0);
 
             await g.SaveSomething(1, "ff", Guid.NewGuid(), DateTime.Now, new int[] { 1, 2, 3, 4, 5 });
         }
 
 
 
-        [TestMethod]
+        [Fact]
         public async Task TestGrains()
         {
             var rnd = new Random();
@@ -116,7 +127,7 @@ namespace SimpleSQLServerStorage.Tests
 
 
             // insert your grain test code here
-            var grain = testingHost.GrainFactory.GetGrain<IMyGrain>(rndId1);
+            var grain = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(rndId1);
 
             var thing4 = new DateTime();
             var thing3 = Guid.NewGuid();
@@ -126,17 +137,17 @@ namespace SimpleSQLServerStorage.Tests
 
             await grain.SaveSomething(thing1, thing2, thing3, thing4, things);
 
-            Assert.AreEqual(thing1, await grain.GetThing1());
-            Assert.AreEqual(thing2, await grain.GetThing2());
-            Assert.AreEqual(thing3, await grain.GetThing3());
-            Assert.AreEqual(thing4, await grain.GetThing4());
+            Assert.Equal(thing1, await grain.GetThing1());
+            Assert.Equal(thing2, await grain.GetThing2());
+            Assert.Equal(thing3, await grain.GetThing3());
+            Assert.Equal(thing4, await grain.GetThing4());
             var res = await grain.GetThings1();
-            CollectionAssert.AreEqual(things, res.ToList());
+            Assert.Equal(things, res.ToList());
         }
 
 
 
-        [TestMethod]
+        [Fact]
         public async Task StateTestGrainTest()
         {
             var rnd = new Random();
@@ -146,7 +157,7 @@ namespace SimpleSQLServerStorage.Tests
 
 
             // insert your grain test code here
-            var grain = testingHost.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
+            var grain = this.HostedCluster.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
 
             var thing4 = new DateTime();
             var thing3 = Guid.NewGuid();
@@ -156,16 +167,29 @@ namespace SimpleSQLServerStorage.Tests
 
             await grain.SaveSomething(thing1, thing2, thing3, thing4, things);
 
-            Assert.AreEqual(thing1, await grain.GetThing1());
-            Assert.AreEqual(thing2, await grain.GetThing2());
-            Assert.AreEqual(thing3, await grain.GetThing3());
-            Assert.AreEqual(thing4, await grain.GetThing4());
+            Assert.Equal(thing1, await grain.GetThing1());
+            Assert.Equal(thing2, await grain.GetThing2());
+            Assert.Equal(thing3, await grain.GetThing3());
+            Assert.Equal(thing4, await grain.GetThing4());
             var res = await grain.GetThings1();
-            CollectionAssert.AreEqual(things, res.ToList());
+            Assert.Equal(things, res.ToList());
+        }
+
+        [Fact]
+        public async Task ClearStateTest()
+        {
+            var rnd = new Random();
+            var rndId1 = rnd.Next();
+
+            var grain = this.HostedCluster.GrainFactory.GetGrain<IStateTestGrain>(rndId1);
+
+            await grain.SaveSomething(5, "ggg", Guid.NewGuid(), DateTime.Now, new int[] { 1, 2, 2, 3 });
+
+            await grain.ClearTheState();
         }
 
 
-        [TestMethod]
+        [Fact]
         public async Task SimpleSQLStore_Delete()
         {
             Guid id = Guid.NewGuid();
@@ -176,15 +200,15 @@ namespace SimpleSQLServerStorage.Tests
             await grain.DoDelete();
 
             int val = await grain.GetValue(); // Should this throw instead?
-            Assert.AreEqual(0, val, "Value after Delete");
+            Assert.Equal(0, val); // "Value after Delete");
 
             await grain.DoWrite(2);
 
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Delete + New Write");
+            Assert.Equal(2, val); // "Value after Delete + New Write");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task Grain_SimpleSQLStore_Read()
         {
             Guid id = Guid.NewGuid();
@@ -192,10 +216,10 @@ namespace SimpleSQLServerStorage.Tests
 
             int val = await grain.GetValue();
 
-            Assert.AreEqual(0, val, "Initial value");
+            Assert.Equal(0, val); // "Initial value");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task Grain_GuidKey_SimpleSQLStore_Read_Write()
         {
             Guid id = Guid.NewGuid();
@@ -203,22 +227,22 @@ namespace SimpleSQLServerStorage.Tests
 
             int val = await grain.GetValue();
 
-            Assert.AreEqual(0, val, "Initial value");
+            Assert.Equal(0, val); // "Initial value");
 
             await grain.DoWrite(1);
             val = await grain.GetValue();
-            Assert.AreEqual(1, val, "Value after Write-1");
+            Assert.Equal(1, val); // "Value after Write-1");
 
             await grain.DoWrite(2);
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Write-2");
+            Assert.Equal(2, val); // "Value after Write-2");
 
             val = await grain.DoRead();
 
-            Assert.AreEqual(2, val, "Value after Re-Read");
+            Assert.Equal(2, val); // "Value after Re-Read");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task Grain_LongKey_SimpleSQLStore_Read_Write()
         {
             long id = random.Next();
@@ -226,22 +250,22 @@ namespace SimpleSQLServerStorage.Tests
 
             int val = await grain.GetValue();
 
-            Assert.AreEqual(0, val, "Initial value");
+            Assert.Equal(0, val); // "Initial value");
 
             await grain.DoWrite(1);
             val = await grain.GetValue();
-            Assert.AreEqual(1, val, "Value after Write-1");
+            Assert.Equal(1, val); // "Value after Write-1");
 
             await grain.DoWrite(2);
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Write-2");
+            Assert.Equal(2, val); // "Value after Write-2");
 
             val = await grain.DoRead();
 
-            Assert.AreEqual(2, val, "Value after Re-Read");
+            Assert.Equal(2, val); // "Value after Re-Read");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task Grain_LongKeyExtended_SimpleSQLStore_Read_Write()
         {
             long id = random.Next();
@@ -252,27 +276,27 @@ namespace SimpleSQLServerStorage.Tests
 
             int val = await grain.GetValue();
 
-            Assert.AreEqual(0, val, "Initial value");
+            Assert.Equal(0, val); // "Initial value");
 
             await grain.DoWrite(1);
             val = await grain.GetValue();
-            Assert.AreEqual(1, val, "Value after Write-1");
+            Assert.Equal(1, val); // "Value after Write-1");
 
             await grain.DoWrite(2);
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Write-2");
+            Assert.Equal(2, val); // "Value after Write-2");
 
             val = await grain.DoRead();
-            Assert.AreEqual(2, val, "Value after DoRead");
+            Assert.Equal(2, val); // "Value after DoRead");
 
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Re-Read");
+            Assert.Equal(2, val); // "Value after Re-Read");
 
             string extKeyValue = await grain.GetExtendedKeyValue();
-            Assert.AreEqual(extKey, extKeyValue, "Extended Key");
+            Assert.Equal(extKey, extKeyValue);// "Extended Key");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task Grain_GuidKeyExtended_SimpleSQLStore_Read_Write()
         {
             var id = Guid.NewGuid();
@@ -283,27 +307,27 @@ namespace SimpleSQLServerStorage.Tests
 
             int val = await grain.GetValue();
 
-            Assert.AreEqual(0, val, "Initial value");
+            Assert.Equal(0, val); // "Initial value");
 
             await grain.DoWrite(1);
             val = await grain.GetValue();
-            Assert.AreEqual(1, val, "Value after Write-1");
+            Assert.Equal(1, val); // "Value after Write-1");
 
             await grain.DoWrite(2);
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Write-2");
+            Assert.Equal(2, val); // "Value after Write-2");
 
             val = await grain.DoRead();
-            Assert.AreEqual(2, val, "Value after DoRead");
+            Assert.Equal(2, val); // "Value after DoRead");
 
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Re-Read");
+            Assert.Equal(2, val); // "Value after Re-Read");
 
             string extKeyValue = await grain.GetExtendedKeyValue();
-            Assert.AreEqual(extKey, extKeyValue, "Extended Key");
+            Assert.Equal(extKey, extKeyValue);// "Extended Key");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task Grain_Generic_SimpleSQLStore_Read_Write()
         {
             long id = random.Next();
@@ -312,22 +336,22 @@ namespace SimpleSQLServerStorage.Tests
 
             int val = await grain.GetValue();
 
-            Assert.AreEqual(0, val, "Initial value");
+            Assert.Equal(0, val); // "Initial value");
 
             await grain.DoWrite(1);
             val = await grain.GetValue();
-            Assert.AreEqual(1, val, "Value after Write-1");
+            Assert.Equal(1, val); // "Value after Write-1");
 
             await grain.DoWrite(2);
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Write-2");
+            Assert.Equal(2, val); // "Value after Write-2");
 
             val = await grain.DoRead();
 
-            Assert.AreEqual(2, val, "Value after Re-Read");
+            Assert.Equal(2, val); // "Value after Re-Read");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task Grain_Generic_SimpleSQLStore_DiffTypes()
         {
             long id1 = random.Next();
@@ -341,97 +365,101 @@ namespace SimpleSQLServerStorage.Tests
             ISimpleSQLStorageGenericGrain<double> grain3 = GrainClient.GrainFactory.GetGrain<ISimpleSQLStorageGenericGrain<double>>(id3);
 
             int val1 = await grain1.GetValue();
-            Assert.AreEqual(0, val1, "Initial value - 1");
+            Assert.Equal(0, val1);// "Initial value - 1");
 
             string val2 = await grain2.GetValue();
-            Assert.AreEqual(null, val2, "Initial value - 2");
+            Assert.Equal(null, val2);// "Initial value - 2");
 
             double val3 = await grain3.GetValue();
-            Assert.AreEqual(0.0, val3, "Initial value - 3");
+            Assert.Equal(0.0, val3);// "Initial value - 3");
 
             int expected1 = 1;
             await grain1.DoWrite(expected1);
             val1 = await grain1.GetValue();
-            Assert.AreEqual(expected1, val1, "Value after Write#1 - 1");
+            Assert.Equal(expected1, val1);// "Value after Write#1 - 1");
 
             string expected2 = "Three";
             await grain2.DoWrite(expected2);
             val2 = await grain2.GetValue();
-            Assert.AreEqual(expected2, val2, "Value after Write#1 - 2");
+            Assert.Equal(expected2, val2);// "Value after Write#1 - 2");
 
             double expected3 = 5.1;
             await grain3.DoWrite(expected3);
             val3 = await grain3.GetValue();
-            Assert.AreEqual(expected3, val3, "Value after Write#1 - 3");
+            Assert.Equal(expected3, val3);// "Value after Write#1 - 3");
 
             val1 = await grain1.GetValue();
-            Assert.AreEqual(expected1, val1, "Value before Write#2 - 1");
+            Assert.Equal(expected1, val1);// "Value before Write#2 - 1");
             expected1 = 2;
             await grain1.DoWrite(expected1);
             val1 = await grain1.GetValue();
-            Assert.AreEqual(expected1, val1, "Value after Write#2 - 1");
+            Assert.Equal(expected1, val1);// "Value after Write#2 - 1");
             val1 = await grain1.DoRead();
-            Assert.AreEqual(expected1, val1, "Value after Re-Read - 1");
+            Assert.Equal(expected1, val1);// "Value after Re-Read - 1");
 
             val2 = await grain2.GetValue();
-            Assert.AreEqual(expected2, val2, "Value before Write#2 - 2");
+            Assert.Equal(expected2, val2);// "Value before Write#2 - 2");
             expected2 = "Four";
             await grain2.DoWrite(expected2);
             val2 = await grain2.GetValue();
-            Assert.AreEqual(expected2, val2, "Value after Write#2 - 2");
+            Assert.Equal(expected2, val2);// "Value after Write#2 - 2");
             val2 = await grain2.DoRead();
-            Assert.AreEqual(expected2, val2, "Value after Re-Read - 2");
+            Assert.Equal(expected2, val2);// "Value after Re-Read - 2");
 
             val3 = await grain3.GetValue();
-            Assert.AreEqual(expected3, val3, "Value before Write#2 - 3");
+            Assert.Equal(expected3, val3);// "Value before Write#2 - 3");
             expected3 = 6.2;
             await grain3.DoWrite(expected3);
             val3 = await grain3.GetValue();
-            Assert.AreEqual(expected3, val3, "Value after Write#2 - 3");
+            Assert.Equal(expected3, val3);// "Value after Write#2 - 3");
             val3 = await grain3.DoRead();
-            Assert.AreEqual(expected3, val3, "Value after Re-Read - 3");
+            Assert.Equal(expected3, val3);// "Value after Re-Read - 3");
         }
 
 
-        [TestMethod]
+        [Fact]
         public async Task Grain_SimpleSQLStore_SiloRestart()
         {
-            var initialServiceId = testingHost.Globals.ServiceId;
-            var initialDeploymentId = testingHost.DeploymentId;
+            var initialServiceId = this.HostedCluster.ClusterConfiguration.Globals.ServiceId;
+            var initialDeploymentId = this.HostedCluster.DeploymentId;
 
-            Console.WriteLine("DeploymentId={0} ServiceId={1}", testingHost.DeploymentId, testingHost.Globals.ServiceId);
+            Console.WriteLine("DeploymentId={0} ServiceId={1}", this.HostedCluster.DeploymentId, this.HostedCluster.ClusterConfiguration.Globals.ServiceId);
 
             Guid id = Guid.NewGuid();
             ISimpleSQLStorageTestGrain grain = GrainClient.GrainFactory.GetGrain<ISimpleSQLStorageTestGrain>(id);
 
             int val = await grain.GetValue();
 
-            Assert.AreEqual(0, val, "Initial value");
+            Assert.Equal(0, val); // "Initial value");
 
             await grain.DoWrite(1);
 
             Console.WriteLine("About to reset Silos");
-            testingHost.RestartDefaultSilos(true);
+            //this.HostedCluster.RestartDefaultSilos(true);    //only TestSiloHost supports this, make TestCluster a public get/set to force a recreate
+            this.HostedCluster.StopAllSilos();
+            this.HostedCluster = null;
+            this.HostedCluster = CreateTestCluster();
+            this.HostedCluster.Deploy();
             Console.WriteLine("Silos restarted");
 
-            Console.WriteLine("DeploymentId={0} ServiceId={1}", testingHost.DeploymentId, testingHost.Globals.ServiceId);
-            Assert.AreEqual(initialServiceId, testingHost.Globals.ServiceId, "ServiceId same after restart.");
-            Assert.AreNotEqual(initialDeploymentId, testingHost.DeploymentId, "DeploymentId different after restart.");
+            Console.WriteLine("DeploymentId={0} ServiceId={1}", this.HostedCluster.DeploymentId, this.HostedCluster.ClusterConfiguration.Globals.ServiceId);
+            Assert.Equal(initialServiceId, this.HostedCluster.ClusterConfiguration.Globals.ServiceId);// "ServiceId same after restart.");
+            Assert.NotEqual(initialDeploymentId, this.HostedCluster.DeploymentId);// "DeploymentId different after restart.");
 
             val = await grain.GetValue();
-            Assert.AreEqual(1, val, "Value after Write-1");
+            Assert.Equal(1, val); // "Value after Write-1");
 
             await grain.DoWrite(2);
             val = await grain.GetValue();
-            Assert.AreEqual(2, val, "Value after Write-2");
+            Assert.Equal(2, val); // "Value after Write-2");
 
             val = await grain.DoRead();
 
-            Assert.AreEqual(2, val, "Value after Re-Read");
+            Assert.Equal(2, val); // "Value after Re-Read");
         }
 
 
-        [TestMethod]
+        [Fact]
         public void Persistence_Perf_Activate()
         {
             const string testName = "Persistence_Perf_Activate";
@@ -443,7 +471,7 @@ namespace SimpleSQLServerStorage.Tests
                 grainSimpleSQLStore => grainSimpleSQLStore.GetValue());
         }
 
-        [TestMethod]
+        [Fact]
         public void Persistence_Perf_Write()
         {
             const string testName = "Persistence_Perf_Write";
@@ -455,7 +483,7 @@ namespace SimpleSQLServerStorage.Tests
                 grainSimpleSQLStore => grainSimpleSQLStore.DoWrite(n));
         }
 
-        [TestMethod]
+        [Fact]
         public void Persistence_Perf_Write_Reread()
         {
             const string testName = "Persistence_Perf_Write_Read";
@@ -472,7 +500,7 @@ namespace SimpleSQLServerStorage.Tests
         }
 
 
-        //[TestMethod]
+        //[Fact]
         //public void Persistence_Silo_StorageProvider_SimpleSQL(Type providerType)
         //{
         //    List<SiloHandle> silos = testingHost.GetActiveSilos().ToList();
@@ -509,7 +537,7 @@ namespace SimpleSQLServerStorage.Tests
 
                 if (elapsed > target.Multiply(2.0 * timingFactor))
                 {
-                    Assert.Fail(msg);
+                    Assert.True(false,msg);
                 }
                 else
                 {
@@ -591,7 +619,7 @@ namespace SimpleSQLServerStorage.Tests
 
 
     public static class ExtensionStuff
-    { 
+    {
 
 
         public static TimeSpan Multiply(this TimeSpan timeSpan, double value)

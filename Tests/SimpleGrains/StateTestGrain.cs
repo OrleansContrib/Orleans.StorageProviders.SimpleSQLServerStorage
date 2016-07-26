@@ -13,6 +13,19 @@ namespace SimpleGrains
     [StorageProvider(ProviderName="basic")]
     public class StateTestGrain : Grain<StateTest>, IStateTestGrain
     {
+        public async Task ClearTheState()
+        {
+            try
+            {
+                await this.ClearStateAsync();
+            }
+            catch(Exception ex)
+            {
+                this.GetLogger().Error(0, "failed to clear state", ex);
+                throw;
+            }
+        }
+
         public Task<int> GetThing1()
         {
             this.ReadStateAsync();
