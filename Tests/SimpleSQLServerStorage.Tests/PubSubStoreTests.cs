@@ -184,12 +184,20 @@ namespace SimpleSQLServerStorage.Tests
             Assert.True(sms.Count() == 1);
 
 
-            var streamProv = GrainClient.GetStreamProvider(StreamProviderName);
-            IAsyncStream<int> stream = streamProv.GetStream<int>(strmId, "test1");
+            try
+            {
+                var streamProv = GrainClient.GetStreamProvider(StreamProviderName);
+                IAsyncStream<int> stream = streamProv.GetStream<int>(strmId, "test1");
 
-            StreamSubscriptionHandle<int> handle = await stream.SubscribeAsync(
-                (e, t) => { return TaskDone.Done; },
-                e => { return TaskDone.Done; });
+                StreamSubscriptionHandle<int> handle = await stream.SubscribeAsync(
+                    (e, t) => { return TaskDone.Done; },
+                    e => { return TaskDone.Done; });
+            }
+            catch(Exception ex)
+            {
+                this.output.WriteLine(ex.ToString());
+                throw;
+            }
         }
     }
 }
