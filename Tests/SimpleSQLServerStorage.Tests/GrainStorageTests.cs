@@ -49,7 +49,7 @@ namespace SimpleSQLServerStorage.Tests
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
-        protected virtual void Dispose(bool disposing)
+        protected void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
@@ -77,7 +77,7 @@ namespace SimpleSQLServerStorage.Tests
         // }
 
         // This code added to correctly implement the disposable pattern.
-        public void Dispose()
+        public override void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
@@ -435,7 +435,11 @@ namespace SimpleSQLServerStorage.Tests
             await grain.DoWrite(1);
 
             Console.WriteLine("About to reset Silos");
-            this.HostedCluster.RestartSilo(this.HostedCluster.Primary);
+            //this.HostedCluster.RestartDefaultSilos(true);    //only TestSiloHost supports this, make TestCluster a public get/set to force a recreate
+            this.HostedCluster.StopAllSilos();
+            this.HostedCluster = null;
+            this.HostedCluster = CreateTestCluster();
+            this.HostedCluster.Deploy();
             Console.WriteLine("Silos restarted");
 
             Console.WriteLine("DeploymentId={0} ServiceId={1}", this.HostedCluster.DeploymentId, this.HostedCluster.ClusterConfiguration.Globals.ServiceId);

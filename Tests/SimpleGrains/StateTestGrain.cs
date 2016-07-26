@@ -15,7 +15,15 @@ namespace SimpleGrains
     {
         public async Task ClearTheState()
         {
-            await this.ClearStateAsync();
+            try
+            {
+                await this.ClearStateAsync();
+            }
+            catch(Exception ex)
+            {
+                this.GetLogger().Error(0, "failed to clear state", ex);
+                throw;
+            }
         }
 
         public Task<int> GetThing1()

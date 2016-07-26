@@ -44,7 +44,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 
         /// <summary> Initialization function for this storage provider. </summary>
         /// <see cref="IProvider#Init"/>
-        public Task Init(string name, IProviderRuntime providerRuntime, IProviderConfiguration config)
+        public async Task Init(string name, IProviderRuntime providerRuntime, IProviderConfiguration config)
         {
             Name = name;
             serviceId = providerRuntime.ServiceId.ToString();
@@ -84,8 +84,6 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
             };
 
             Log = providerRuntime.GetLogger("StorageProvider.SimpleSQLServerStorage." + serviceId);
-
-            return TaskDone.Done;
         }
 
         // Internal method to initialize for testing
@@ -237,12 +235,20 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                 Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerStorageProvider_ClearingData,
                     $"Clearing: GrainType={grainType} Pk={primaryKey} Grainid={grainReference} ETag={grainState.ETag} from DataSource={this.sqlconnBuilder.DataSource} Catalog={this.sqlconnBuilder.InitialCatalog}");
             }
-            var entity = new KeyValueStore() { GrainKeyId = primaryKey };
-            using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
+            try
             {
-                db.KeyValues.Attach(entity);
-                db.KeyValues.Remove(entity);
-                await db.SaveChangesAsync();
+                var entity = new KeyValueStore() { GrainKeyId = primaryKey };
+                using (var db = new KeyValueDbContext(this.sqlconnBuilder.ConnectionString))
+                {
+                    db.KeyValues.Attach(entity);
+                    db.KeyValues.Remove(entity);
+                    await db.SaveChangesAsync();
+                }
+            }
+            catch(Exception ex)
+            {
+                this.Log.Error(0, "failed to attach and remove entity", ex);
+                throw;
             }
         }
     }

@@ -15,7 +15,8 @@ namespace SimpleSQLServerStorage.Tests
             TestClusterOptions.DefaultTraceToConsole = true;
         }
 
-        protected TestCluster HostedCluster { get; private set; }
+        //protected TestCluster HostedCluster { get; private set; }
+        protected TestCluster HostedCluster { get; set; }
 
         public TestClusterPerTest()
         {

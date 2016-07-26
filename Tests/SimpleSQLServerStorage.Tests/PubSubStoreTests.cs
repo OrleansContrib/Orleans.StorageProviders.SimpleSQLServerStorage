@@ -28,32 +28,20 @@ namespace SimpleSQLServerStorage.Tests
         private static readonly string StreamProviderName = "sms";
 
         #region Orleans Stuff
-        //private static TestCluster testingCluster;
-
-        public Logger Logger
-        {
-            get { return GrainClient.Logger; }
-        }
-
 
         private readonly TimeSpan _timeout = Debugger.IsAttached ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(10);
 
         private readonly ITestOutputHelper output;
 
-        public PubSubStoreTests(ITestOutputHelper output)
+        public PubSubStoreTests(ITestOutputHelper output) : base()
         {
             this.output = output;
-
-            //testingCluster = CreateTestCluster();
-            //testingCluster.Deploy();
-            //testingCluster.InitializeClient();
         }
-
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
-        protected virtual void Dispose(bool disposing)
+        protected void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
@@ -81,7 +69,7 @@ namespace SimpleSQLServerStorage.Tests
         // }
 
         // This code added to correctly implement the disposable pattern.
-        public void Dispose()
+        public override void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
@@ -96,11 +84,11 @@ namespace SimpleSQLServerStorage.Tests
         {
             var options = new TestClusterOptions();
 
+            options.ClientConfiguration.AddSimpleMessageStreamProvider(StreamProviderName, false);
+
             options.ClusterConfiguration.AddSimpleSQLStorageProvider("PubSubStore",
                 string.Format(@"Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename={0};Trusted_Connection=Yes", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PubSubStore.mdf")), "true");
-            options.ClusterConfiguration.AddSimpleMessageStreamProvider(StreamProviderName);
-
-            options.ClientConfiguration.AddSimpleMessageStreamProvider(StreamProviderName);
+            options.ClusterConfiguration.AddSimpleMessageStreamProvider(StreamProviderName, false);
 
             return new TestCluster(options);
         }
@@ -158,25 +146,25 @@ namespace SimpleSQLServerStorage.Tests
             {
                 if (numProduced <= 0)
                 {
-                    Logger.Info("numProduced <= 0: Events were not produced");
+                    logger.Info("numProduced <= 0: Events were not produced");
                 }
                 if (consumerCount != numConsumed.Count)
                 {
-                    Logger.Info("consumerCount != numConsumed.Count: Incorrect number of consumers. consumerCount = {0}, numConsumed.Count = {1}",
+                    logger.Info("consumerCount != numConsumed.Count: Incorrect number of consumers. consumerCount = {0}, numConsumed.Count = {1}",
                         consumerCount, numConsumed.Count);
                 }
                 foreach (var consumed in numConsumed)
                 {
                     if (numProduced != consumed.Value.Item1)
                     {
-                        Logger.Info("numProduced != consumed: Produced and consumed counts do not match. numProduced = {0}, consumed = {1}",
+                        logger.Info("numProduced != consumed: Produced and consumed counts do not match. numProduced = {0}, consumed = {1}",
                             numProduced, consumed.Key.HandleId + " -> " + consumed.Value);
                         //numProduced, Utils.DictionaryToString(numConsumed));
                     }
                 }
                 return false;
             }
-            Logger.Info("All counts are equal. numProduced = {0}, numConsumed = {1}", numProduced,
+            logger.Info("All counts are equal. numProduced = {0}, numConsumed = {1}", numProduced,
                 Utils.EnumerableToString(numConsumed, kvp => kvp.Key.HandleId.ToString() + "->" + kvp.Value.ToString()));
             return true;
         }
@@ -186,6 +174,15 @@ namespace SimpleSQLServerStorage.Tests
         public async Task StreamingPubSubStoreTest()
         {
             var strmId = Guid.NewGuid();
+
+            var providers = this.HostedCluster.ClientConfiguration.GetAllProviderConfigurations();
+            var sms = from x in providers
+                      where
+  x.Name.Equals(StreamProviderName)
+                      select x;
+
+            Assert.True(sms.Count() == 1);
+
 
             var streamProv = GrainClient.GetStreamProvider(StreamProviderName);
             IAsyncStream<int> stream = streamProv.GetStream<int>(strmId, "test1");
