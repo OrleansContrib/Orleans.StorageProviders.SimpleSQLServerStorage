@@ -13,6 +13,7 @@ using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
 using Xunit;
 using Xunit.Abstractions;
+using Orleans.StorageProviders.SimpleSQLServerStorage;
 
 namespace SimpleSQLServerStorage.Tests
 {

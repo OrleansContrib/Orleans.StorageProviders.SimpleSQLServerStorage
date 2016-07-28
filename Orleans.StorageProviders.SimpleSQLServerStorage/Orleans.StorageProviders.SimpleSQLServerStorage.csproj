@@ -69,6 +69,7 @@
     <Compile Include="KeyValueStore.cs" />
     <Compile Include="KeyValueDbConfiguration.cs" />
     <Compile Include="KeyValueDbContext.cs" />
+    <Compile Include="ProviderConfigurationExtensions.cs" />
     <Compile Include="SimpleSQLServerProviderErrorCodes.cs" />
     <Compile Include="SimpleSQLServerStorage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
