@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SimpleSQLServerStorage.Tests
+namespace Orleans.StorageProviders.SimpleSQLServerStorage
 {
     public static class ProviderConfigurationExtensions
     {

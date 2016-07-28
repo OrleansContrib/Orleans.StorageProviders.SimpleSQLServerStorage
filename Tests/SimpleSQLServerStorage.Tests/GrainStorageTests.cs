@@ -14,6 +14,7 @@ using Xunit.Abstractions;
 using Xunit;
 using SimpleGrains;
 using System.Globalization;
+using Orleans.StorageProviders.SimpleSQLServerStorage;
 
 namespace SimpleSQLServerStorage.Tests
 {
