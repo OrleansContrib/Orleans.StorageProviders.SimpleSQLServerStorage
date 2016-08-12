@@ -25,7 +25,7 @@ namespace SimpleSQLServerStorage.Tests
     {
         private readonly string dbInstanceName;
         private readonly ISqlLocalDbInstance instance;
-        private readonly Dictionary<string, string> dbNames;
+        private readonly Dictionary<string, SqlConnectionStringBuilder> dbNames;
 
 
         private readonly double timingFactor;
@@ -44,11 +44,7 @@ namespace SimpleSQLServerStorage.Tests
 
             var rnd = new Random();
 
-            dbNames = new Dictionary<string, string>()
-            {
-                { "basic", rnd.Next().ToString() },
-                { "SimpleSQLStore", rnd.Next().ToString() },
-        };
+            dbNames = new Dictionary<string, SqlConnectionStringBuilder>();
 
             dbInstanceName = rnd.Next().ToString();
 
@@ -57,7 +53,28 @@ namespace SimpleSQLServerStorage.Tests
 
             instance.Start();
 
-            Initialize();
+            //do the database setups
+            dbNames.Add("basic", CreateADatabase(rnd));
+            dbNames.Add("SimpleSQLStore", CreateADatabase(rnd));
+
+            //this is the call to start up the test cluster 
+            base.Initialize();
+        }
+
+        private SqlConnectionStringBuilder CreateADatabase(Random rnd)
+        {
+            string actualDBName = rnd.Next().ToString();
+            using (SqlConnection connection = instance.CreateConnection())
+            {
+                connection.Open();
+                using (SqlCommand command = new SqlCommand($"create database [{actualDBName}]", connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+            }
+            var sbuilder = instance.CreateConnectionStringBuilder();
+            sbuilder.SetInitialCatalogName(actualDBName);
+            return sbuilder;
         }
 
 
@@ -115,20 +132,9 @@ namespace SimpleSQLServerStorage.Tests
 
             foreach (var item in dbNames)
             {
-                string actualDBName = item.Value;
+                string actualDBName = item.Value.ConnectionString;
                 string dbName = item.Key;
-                using (SqlConnection connection = instance.CreateConnection())
-                {
-                    connection.Open();
-                    using (SqlCommand command = new SqlCommand($"create database [{actualDBName}]", connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                }
-                var sbuilder = instance.CreateConnectionStringBuilder();
-                sbuilder.SetInitialCatalogName(actualDBName);
-
-                options.ClusterConfiguration.AddSimpleSQLStorageProvider(dbName, sbuilder.ConnectionString, "true");
+                options.ClusterConfiguration.AddSimpleSQLStorageProvider(dbName, actualDBName, "true");
             }
 
 
