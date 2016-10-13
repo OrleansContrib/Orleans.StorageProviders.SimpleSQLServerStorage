@@ -42,6 +42,7 @@ namespace SimpleSQLServerStorage.Tests
             dbNames = new Dictionary<string, string>()
             {
                 { "PubSubStore", rnd.Next().ToString() },
+                { "basic", rnd.Next().ToString() },
             };
 
             dbInstanceName = rnd.Next().ToString();

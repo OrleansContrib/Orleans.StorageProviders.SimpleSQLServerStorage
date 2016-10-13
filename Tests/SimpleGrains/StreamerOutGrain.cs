@@ -3,15 +3,12 @@ using Orleans.Runtime;
 using Orleans.Streams;
 using SimpleGrainInterfaces;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace SimpleGrain
+namespace SimpleGrains
 {
-    public class StreamerOutGrain : Grain, IStreamerOutGrain
+    public class StreamerOutGrain : MyGrain, IStreamerOutGrain
     {
         private IAsyncStream<int> producer;
         private int numProducedItems;
