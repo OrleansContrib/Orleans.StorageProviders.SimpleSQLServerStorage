@@ -8,7 +8,7 @@ using Orleans.Streams;
 using Orleans.Runtime;
 using Orleans;
 
-namespace SimpleGrain
+namespace SimpleGrains
 {
     public class StreamerInGrain : Grain, IStreamerInGrain
     {
