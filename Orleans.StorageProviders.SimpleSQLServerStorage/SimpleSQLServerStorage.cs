@@ -115,7 +115,9 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                                     //data = SerializationManager.DeserializeFromByteArray<Dictionary<string, object>>(value);
                                     grainState.State = SerializationManager.DeserializeFromByteArray<object>(value.BinaryContent);
 									grainState.ETag = value.ETag;
-                                }
+									if(grainState.State is GrainState)
+										((GrainState)grainState.State).Etag = value.ETag;
+								}
 							}
 							break;
                         case StorageFormatEnum.Json:
@@ -126,6 +128,8 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                                     //data = JsonConvert.DeserializeObject<Dictionary<string, object>>(value, jsonSettings);
                                     grainState.State = JsonConvert.DeserializeObject(value.JsonContext, grainState.State.GetType(), jsonSettings);
 									grainState.ETag = value.ETag;
+									if(grainState.State is GrainState)
+										((GrainState)grainState.State).Etag = value.ETag;
 								}
 							}
 							break;
@@ -149,7 +153,10 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
         /// <see cref="IStorageProvider#WriteStateAsync"/>
         public async Task WriteStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
         {
-            var primaryKey = grainReference.ToKeyString();
+			if(grainState.State is GrainState)	//WARN: HACK, such a hack
+				grainState.ETag = ((GrainState)grainState.State).Etag;
+
+			var primaryKey = grainReference.ToKeyString();
             if (Log.IsVerbose3)
             {
                 Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerProvider_WritingData,
@@ -195,11 +202,15 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 
                     db.Set<KeyValueStore>().AddOrUpdate(kvb);
 
-					await db.SaveChangesAsync();
+					grainState.ETag = kvb.ETag;
+					if(grainState.State is GrainState)
+						((GrainState)grainState.State).Etag = kvb.ETag;
 
+					await db.SaveChangesAsync();
                 }
-            }
-            catch (Exception ex)
+
+			}
+			catch (Exception ex)
             {
                 Log.Error((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerProvider_WriteError,
                     $"Error writing: GrainType={grainType} GrainId={grainReference} ETag={grainState.ETag} to DataSource={this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog}",
@@ -228,12 +239,15 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
                 {
                     db.KeyValues.Attach(entity);
                     db.KeyValues.Remove(entity);
-                    await db.SaveChangesAsync();
-                }
 
-				grainState.ETag = null;
-            }
-            catch (Exception ex)
+					grainState.ETag = null;
+					if(grainState.State is GrainState)
+						((GrainState)grainState.State).Etag = null;
+
+					await db.SaveChangesAsync();
+                }
+			}
+			catch (Exception ex)
             {
                 Log.Error((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerProvider_DeleteError,
                   $"Error clearing: GrainType={grainType} GrainId={grainReference} ETag={grainState.ETag} in to DataSource={this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog}",

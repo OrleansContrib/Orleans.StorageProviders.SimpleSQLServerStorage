@@ -18,6 +18,7 @@ using Orleans.StorageProviders.SimpleSQLServerStorage;
 using System.Data.SqlLocalDb;
 using System.Data.SqlClient;
 using System.Net;
+using Orleans.Storage;
 
 namespace SimpleSQLServerStorage.Tests
 {
@@ -158,8 +159,6 @@ namespace SimpleSQLServerStorage.Tests
             await g.SaveSomething(1, "ff", Guid.NewGuid(), DateTime.Now, new int[] { 1, 2, 3, 4, 5 });
         }
 
-
-
         [Fact]
         public async Task TestGrains()
         {
@@ -188,9 +187,78 @@ namespace SimpleSQLServerStorage.Tests
             Assert.Equal(things, res.ToList());
         }
 
+		[Fact]
+		public async Task TestGrainEtagNotNull()
+		{
+			var g = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(0);
 
+			var guid1 = Guid.NewGuid();
+			var dateTime1 = DateTime.Now;
+			await g.SaveSomething(1, "ff", guid1, dateTime1, new int[] { 1, 2, 3, 4, 5 });
+			string etag1 = await g.GetEtag();
+			Assert.NotNull(etag1);
+		}
 
-        [Fact]
+		[Fact]
+		public async Task TestGrainEtagNotChanged()
+		{
+			var g = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(0);
+
+			var guid1 = Guid.NewGuid();
+			var dateTime1 = DateTime.Now;
+			await g.SaveSomething(1, "ff", guid1, dateTime1, new int[] { 1, 2, 3, 4, 5 });
+			string etag1 = await g.GetEtag();
+
+			await g.ReadSomething();    //ReadStateAsync does NOT generate a new etag 
+			string etag2 = await g.GetEtag();
+			Assert.Equal(etag1, etag2);
+		}
+
+		[Fact]
+		public async Task TestGrainEtagChangesSameData()
+		{
+			var g = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(0);
+
+			var guid1 = Guid.NewGuid();
+			var dateTime1 = DateTime.Now;
+			await g.SaveSomething(1, "ff", guid1, dateTime1, new int[] { 1, 2, 3, 4, 5 });
+			string etag1 = await g.GetEtag();
+			await g.SaveSomething(1, "ff", guid1, dateTime1, new int[] { 1, 2, 3, 4, 5 });  //NOTE: the data is identical, but we get a new etag
+			string etag3 = await g.GetEtag();
+			Assert.NotEqual(etag1, etag3);
+		}
+
+		[Fact]
+		public async Task TestGrainEtagChanges()
+		{
+			var g = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(0);
+
+			var guid1 = Guid.NewGuid();
+			var dateTime1 = DateTime.Now;
+			await g.SaveSomething(1, "ff", guid1, dateTime1, new int[] { 1, 2, 3, 4, 5 });
+			string etag1 = await g.GetEtag();
+			await g.SaveSomething(2, "ff", guid1, dateTime1, new int[] { 1, 2, 3, 4, 5 });
+			string etag4 = await g.GetEtag();
+			Assert.NotEqual(etag1, etag4);
+		}
+
+		[Fact]
+		public async Task TestGrainThrowsInconsistentStateException()
+		{
+			var g = this.HostedCluster.GrainFactory.GetGrain<IMyGrain>(0);
+
+			var guid1 = Guid.NewGuid();
+			var dateTime1 = DateTime.Now;
+			await g.SaveSomething(1, "ff", guid1, dateTime1, new int[] { 1, 2, 3, 4, 5 });
+			string etag1 = await g.GetEtag();
+			await g.BreakEtagForUnitTestPurposes();
+			string etag2 = await g.GetEtag();
+			Exception ex = await Assert.ThrowsAsync<OrleansException>(async () => await g.SaveSomething(2, "ff", guid1, dateTime1, new int[] { 1, 2, 3, 4, 5 }));
+			Assert.IsType(typeof(InconsistentStateException), ex.InnerException);
+		}
+		
+
+		[Fact]
         public async Task StateTestGrainTest()
         {
             var rnd = new Random();
