@@ -76,5 +76,21 @@ namespace SimpleGrains
             State.Things1 = v;
             return this.WriteStateAsync();
         }
-    }
+
+		public Task<string> GetEtag()
+		{
+			return Task.FromResult(State.Etag);
+		}
+
+		public Task ReadSomething()
+		{
+			return this.ReadStateAsync();
+		}
+
+		public Task BreakEtagForUnitTestPurposes()
+		{
+			State.Etag = Guid.NewGuid().ToString();
+			return TaskDone.Done;
+		}
+	}
 }
