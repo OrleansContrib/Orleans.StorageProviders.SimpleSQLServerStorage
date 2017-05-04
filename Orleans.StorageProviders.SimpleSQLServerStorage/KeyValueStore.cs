@@ -12,10 +12,13 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
         [Key]
         [MaxLength(1024)]
         public string GrainKeyId { get; set; }
+
         [MaxLength]
         public byte[] BinaryContent { get; set; }
+
         [MaxLength]
         public string JsonContext { get; set; }
+
 		[MaxLength(100)]
 		public string ETag { get; set; }
 

@@ -8,7 +8,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A KV SQL Server implementation of the Orleans Storage Provider model</description>
     <licenseUrl>http://choosealicense.com/licenses/mit/</licenseUrl>
-    <copyright>Copyright 2016</copyright>
+    <copyright>Copyright 2017</copyright>
     <summary>A KV SQL Server implementation of the Orleans Storage Provider model.</summary>
     <projectUrl>https://github.com/OrleansContrib/Orleans.StorageProviders.SimpleSQLServerStorage</projectUrl>
     <tags>Orleans, sqlserver, storageprovider</tags>
