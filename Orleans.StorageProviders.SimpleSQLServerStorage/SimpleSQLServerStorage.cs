@@ -92,7 +92,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
         /// <see cref="IStorageProvider#ReadStateAsync"/>
         public async Task ReadStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
         {
-            var primaryKey = grainReference.ToKeyString();
+            var primaryKey = GetKeyString(grainReference);
 
             if (Log.IsVerbose3)
             {
@@ -157,7 +157,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 			if(grainState.State is GrainState)	//WARN: HACK, such a hack
 				grainState.ETag = ((GrainState)grainState.State).Etag;
 
-			var primaryKey = grainReference.ToKeyString();
+			var primaryKey = GetKeyString(grainReference);
             if (Log.IsVerbose3)
             {
                 Log.Verbose3((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerProvider_WritingData,
@@ -227,7 +227,7 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 		/// <see cref="IStorageProvider#ClearStateAsync"/>
 		public async Task ClearStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
         {
-            var primaryKey = grainReference.ToKeyString();
+            var primaryKey = GetKeyString(grainReference);
 
             try
             {
@@ -259,6 +259,11 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 
                 throw;
             }
+        }
+
+        public string GetKeyString(GrainReference grainReference)
+        {
+            return $"{serviceId}_{grainReference.ToKeyString()}";
         }
     }
 }
