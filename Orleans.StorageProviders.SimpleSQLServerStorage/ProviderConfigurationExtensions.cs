@@ -16,11 +16,13 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
         /// <param name="providerName">The provider name.</param>
         /// <param name="connectionString">SqlClient connection string</param>
         /// <param name="UseJsonFormat">true, false, or both</param>
+        /// <param name="ThrowOnDeserializeError">true by default for backward compatibility, will stop grain from being activated if a deserializeation exception occurs</param>
         public static void AddSimpleSQLStorageProvider(
             this ClusterConfiguration config,
             string providerName,
             string connectionString,
-            string UseJsonFormat)
+            string UseJsonFormat,
+            string ThrowOnDeserializeError = "true")
         {
             if (string.IsNullOrWhiteSpace(providerName))
                 throw new ArgumentNullException(nameof(providerName));
@@ -29,8 +31,8 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
             {
                 { "ConnectionString" , connectionString },
                 { "TableName", string.Empty},
-                { "UseJsonFormat", UseJsonFormat }
-
+                { "UseJsonFormat", UseJsonFormat },
+                { "ThrowOnDeserializeError", ThrowOnDeserializeError}
             };
 
             config.Globals.RegisterStorageProvider<Orleans.StorageProviders.SimpleSQLServerStorage.SimpleSQLServerStorage>(providerName, properties);
