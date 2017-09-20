@@ -25,10 +25,12 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 
         private const string CONNECTION_STRING = "ConnectionString";
         private const string USE_JSON_FORMAT_PROPERTY = "UseJsonFormat";
+        private const string THROW_ON_DESERIALIZE_ERROR = "ThrowOnDeserializeError";
 
         private string serviceId;
         private Newtonsoft.Json.JsonSerializerSettings jsonSettings;
         private StorageFormatEnum useJsonOrBinaryFormat;
+        private bool throwOnDeserializeError;
 
 
         /// <summary> Name of this storage provider instance. </summary>
@@ -74,6 +76,12 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
 
                     if ("both".Equals(config.Properties[USE_JSON_FORMAT_PROPERTY], StringComparison.OrdinalIgnoreCase))
                         useJsonOrBinaryFormat = StorageFormatEnum.Both;
+                }
+
+                if(config.Properties.ContainsKey(THROW_ON_DESERIALIZE_ERROR))
+                {
+                    if("false".Equals(config.Properties[THROW_ON_DESERIALIZE_ERROR], StringComparison.OrdinalIgnoreCase))
+                        throwOnDeserializeError = false;
                 }
             }
             catch (Exception ex)
@@ -142,11 +150,17 @@ namespace Orleans.StorageProviders.SimpleSQLServerStorage
             catch (Exception ex)
             {
                 Log.Error((int) SimpleSQLServerProviderErrorCodes.SimpleSQLServerProvider_ReadError,
-                    $"Error reading: GrainType={grainType} Grainid={grainReference} ETag={grainState.ETag} from DataSource={this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog}",
-                    ex);
-                throw;
-            }
+                    $"Error reading: GrainType={grainType} Grainid={grainReference} ETag={grainState.ETag} from DataSource={this.sqlconnBuilder.DataSource + "." + this.sqlconnBuilder.InitialCatalog}", ex);
 
+                if(!throwOnDeserializeError)
+                {
+                    await ClearStateAsync(grainType, grainReference, grainState);
+                }
+                else
+                {
+                    throw; //this is the default behavior if config option is missing
+                }
+            }
         }
 
 
